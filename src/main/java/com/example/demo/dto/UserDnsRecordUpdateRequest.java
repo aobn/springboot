@@ -2,6 +2,7 @@ package com.example.demo.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * 用户DNS解析记录更新请求DTO
@@ -11,6 +12,12 @@ import jakarta.validation.constraints.Max;
  * @since 2025-08-25
  */
 public class UserDnsRecordUpdateRequest {
+    
+    /**
+     * 要修改的DNS解析记录ID
+     */
+    @NotNull(message = "记录ID不能为空")
+    private Long id;
     
     /**
      * 记录类型（A、CNAME、MX、TXT等）
@@ -62,6 +69,14 @@ public class UserDnsRecordUpdateRequest {
     public UserDnsRecordUpdateRequest() {}
     
     // Getter和Setter方法
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
     public String getType() {
         return type;
     }
@@ -129,7 +144,8 @@ public class UserDnsRecordUpdateRequest {
     @Override
     public String toString() {
         return "UserDnsRecordUpdateRequest{" +
-                "type='" + type + '\'' +
+                "id=" + id +
+                ", type='" + type + '\'' +
                 ", value='" + value + '\'' +
                 ", line='" + line + '\'' +
                 ", ttl=" + ttl +

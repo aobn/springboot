@@ -4,6 +4,7 @@ import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.UserDnsRecordRequest;
 import com.example.demo.dto.UserDnsRecordUpdateRequest;
 import com.example.demo.dto.UserDnsRecordQueryRequest;
+import com.example.demo.dto.DeleteDnsRecordRequest;
 import com.example.demo.entity.UserDnsRecord;
 import com.example.demo.entity.UserSubdomain;
 import com.example.demo.service.DnspodService;
@@ -188,15 +189,13 @@ public class UserDnsRecordController {
     /**
      * 修改用户DNS解析记录
      * 
-     * @param id 记录ID
      * @param request DNS解析记录更新请求
      * @param authHeader Authorization头信息
      * @return 修改结果
      */
-    @PutMapping("/{id}")
+    @PostMapping("/modify")
     @Transactional
     public ApiResponse<UserDnsRecord> updateDnsRecord(
-            @PathVariable Long id,
             @Valid @RequestBody UserDnsRecordUpdateRequest request,
             @RequestHeader("Authorization") String authHeader) {
         try {
@@ -207,10 +206,10 @@ public class UserDnsRecordController {
             Long userId = jwtUtil.getUserIdFromToken(token);
             String email = jwtUtil.getEmailFromToken(token);
             
-            log.info("用户 {} ({}) 请求修改DNS解析记录 {}: {}", userId, email, id, request);
+            log.info("用户 {} ({}) 请求修改DNS解析记录 {}: {}", userId, email, request.getId(), request);
             
             // 1. 验证记录是否存在且属于当前用户
-            UserDnsRecord record = userDnsRecordService.getRecordById(id);
+            UserDnsRecord record = userDnsRecordService.getRecordById(request.getId());
             if (record == null) {
                 return ApiResponse.error(404, "DNS解析记录不存在");
             }
@@ -240,7 +239,7 @@ public class UserDnsRecordController {
                 if ("CNAME".equals(request.getType()) || "CNAME".equals(record.getType())) {
                     List<UserDnsRecord> existingRecords = userDnsRecordService.getRecordsByUserIdAndSubdomainId(userId, record.getSubdomainId());
                     for (UserDnsRecord existingRecord : existingRecords) {
-                        if (existingRecord.getId().equals(id)) {
+                        if (existingRecord.getId().equals(request.getId())) {
                             continue; // 跳过当前记录
                         }
                         if (existingRecord.getName().equals(record.getName())) {
@@ -328,13 +327,13 @@ public class UserDnsRecordController {
                 
                 // 7. 更新本地记录状态
                 if (response != null && response.getRecordId() != null) {
-                    userDnsRecordService.updateSyncStatus(record.getId(), "SUCCESS", null);
+                    userDnsRecordService.updateSyncStatus(request.getId(), "SUCCESS", null);
                     
                     // 更新返回的记录对象
                     updatedRecord.setSyncStatus("SUCCESS");
                     
                     log.info("DNS解析记录修改成功: recordId={}, dnspodRecordId={}", 
-                            record.getId(), response.getRecordId());
+                            request.getId(), response.getRecordId());
                 } else {
                     throw new RuntimeException("DNSPod API返回异常");
                 }
@@ -343,7 +342,7 @@ public class UserDnsRecordController {
                 log.error("同步DNS记录修改到DNSPod失败", e);
                 
                 // 更新同步状态为失败
-                userDnsRecordService.updateSyncStatus(record.getId(), "FAILED", e.getMessage());
+                userDnsRecordService.updateSyncStatus(request.getId(), "FAILED", e.getMessage());
                 updatedRecord.setSyncStatus("FAILED");
                 updatedRecord.setSyncError(e.getMessage());
                 
@@ -520,7 +519,22 @@ public class UserDnsRecordController {
     }
     
     /**
-     * 删除DNS解析记录
+     * 删除DNS解析记录（POST方式，JSON格式）
+     * 
+     * @param request 删除请求参数
+     * @param authHeader Authorization头信息
+     * @return 删除结果
+     */
+    @PostMapping("/delete")
+    @Transactional
+    public ApiResponse<Boolean> deleteDnsRecordPost(
+            @Valid @RequestBody DeleteDnsRecordRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        return deleteDnsRecordInternal(request.getRecordId(), authHeader);
+    }
+    
+    /**
+     * 删除DNS解析记录（DELETE方式，路径参数）
      * 
      * @param id 记录ID
      * @param authHeader Authorization头信息
@@ -531,6 +545,19 @@ public class UserDnsRecordController {
     public ApiResponse<Boolean> deleteDnsRecord(
             @PathVariable Long id,
             @RequestHeader("Authorization") String authHeader) {
+        return deleteDnsRecordInternal(id, authHeader);
+    }
+    
+    /**
+     * 删除DNS解析记录的内部实现
+     * 
+     * @param id 记录ID
+     * @param authHeader Authorization头信息
+     * @return 删除结果
+     */
+    private ApiResponse<Boolean> deleteDnsRecordInternal(
+            Long id,
+            String authHeader) {
         try {
             // 步骤1：用户身份验证(JWT)
             // 从Authorization头中提取token
