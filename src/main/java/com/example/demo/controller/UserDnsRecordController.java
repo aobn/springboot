@@ -20,6 +20,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -256,16 +257,89 @@ public class UserDnsRecordController {
                 return ApiResponse.error(400, "记录值格式不正确");
             }
             
-            // 5. 更新本地记录（保存原始值用于回滚）
-            String originalType = record.getType();
-            String originalValue = record.getValue();
-            Integer originalTtl = record.getTtl();
-            Integer originalMx = record.getMx();
-            Integer originalWeight = record.getWeight();
-            String originalStatus = record.getStatus();
-            String originalRemark = record.getRemark();
+            // 5. 调用DNSPod API修改记录（只有DNSPod修改成功后才更新本地数据库）
+            // 构建完整域名（子域名.主域名）
+            String fullDomain = userSubdomain.getFullDomain();
+            String[] domainParts = fullDomain.split("\\.", 2);
+            if (domainParts.length != 2) {
+                return ApiResponse.error(500, "域名格式错误: " + fullDomain);
+            }
             
-            // 更新记录字段
+            String subDomainPrefix = domainParts[0];
+            String mainDomain = domainParts[1];
+            
+            // 构建DNSPod记录的主机记录
+            String dnspodSubDomain;
+            if ("@".equals(record.getName())) {
+                dnspodSubDomain = subDomainPrefix;
+            } else {
+                dnspodSubDomain = record.getName() + "." + subDomainPrefix;
+            }
+            
+            // 确保recordId不为空
+            if (record.getRecordId() == null) {
+                return ApiResponse.error(400, "DNSPod记录ID为空，无法修改记录");
+            }
+            
+            log.info("调用DNSPod API修改记录: domain={}, recordId={}, subDomain={}, type={}, value={}", 
+                    mainDomain, record.getRecordId(), dnspodSubDomain, 
+                    request.getType() != null ? request.getType() : record.getType(),
+                    request.getValue() != null ? request.getValue() : record.getValue());
+            
+            ModifyRecordResponse dnspodResponse;
+            try {
+                // 安全处理Long类型参数，避免NullPointerException
+                Long ttlValue = 600L; // 默认TTL值
+                if (request.getTtl() != null) {
+                    ttlValue = request.getTtl().longValue();
+                } else if (record.getTtl() != null) {
+                    ttlValue = record.getTtl().longValue();
+                }
+                
+                Long mxValue = null;
+                if (request.getMx() != null) {
+                    mxValue = request.getMx().longValue();
+                } else if (record.getMx() != null) {
+                    mxValue = record.getMx().longValue();
+                }
+                
+                Long weightValue = null;
+                if (request.getWeight() != null) {
+                    weightValue = request.getWeight().longValue();
+                } else if (record.getWeight() != null) {
+                    weightValue = record.getWeight().longValue();
+                }
+                
+                dnspodResponse = dnspodService.modifyRecord(
+                        mainDomain,
+                        record.getRecordId(),
+                        request.getType() != null ? request.getType() : record.getType(),
+                        record.getLine(),
+                        request.getValue() != null ? request.getValue() : record.getValue(),
+                        dnspodSubDomain,
+                        null, // domainId
+                        ttlValue,
+                        mxValue,
+                        weightValue,
+                        request.getStatus() != null ? request.getStatus() : record.getStatus(),
+                        request.getRemark() != null ? request.getRemark() : record.getRemark()
+                );
+                
+                // 检查DNSPod API调用结果
+                if (dnspodResponse == null || dnspodResponse.getRecordId() == null) {
+                    log.error("DNSPod API修改失败: 响应为空或记录ID为空");
+                    return ApiResponse.error(500, "DNSPod API修改失败: 响应异常");
+                }
+                
+                log.info("DNSPod API修改成功，recordId: {}", dnspodResponse.getRecordId());
+                
+            } catch (Exception e) {
+                log.error("DNSPod API修改失败: {}", e.getMessage(), e);
+                // DNSPod API失败，不更新本地数据库，直接返回错误信息
+                return ApiResponse.error(500, "DNSPod API修改失败: " + e.getMessage());
+            }
+            
+            // 6. 更新本地记录(只有DNSPod修改成功后才更新本地数据库)
             if (request.getType() != null) record.setType(request.getType());
             if (request.getValue() != null) record.setValue(request.getValue());
             if (request.getLine() != null) record.setLine(request.getLine());
@@ -275,79 +349,16 @@ public class UserDnsRecordController {
             if (request.getStatus() != null) record.setStatus(request.getStatus());
             if (request.getRemark() != null) record.setRemark(request.getRemark());
             
-            // 更新同步状态为待同步
-            record.setSyncStatus("PENDING");
+            // 更新同步状态为成功
+            record.setSyncStatus("SUCCESS");
             record.setSyncError(null);
+            record.setUpdateTime(LocalDateTime.now());
             
             // 保存到数据库
             UserDnsRecord updatedRecord = userDnsRecordService.updateRecord(record);
             
-            // 6. 同步到DNSPod
-            try {
-                // 构建完整域名（子域名.主域名）
-                String fullDomain = userSubdomain.getFullDomain();
-                String[] domainParts = fullDomain.split("\\.", 2);
-                if (domainParts.length != 2) {
-                    throw new RuntimeException("域名格式错误: " + fullDomain);
-                }
-                
-                String subDomainPrefix = domainParts[0];
-                String mainDomain = domainParts[1];
-                
-                // 构建DNSPod记录的主机记录
-                String dnspodSubDomain;
-                if ("@".equals(record.getName())) {
-                    dnspodSubDomain = subDomainPrefix;
-                } else {
-                    dnspodSubDomain = record.getName() + "." + subDomainPrefix;
-                }
-                
-                log.info("调用DNSPod API修改记录: domain={}, recordId={}, subDomain={}, type={}, value={}", 
-                        mainDomain, record.getRecordId(), dnspodSubDomain, record.getType(), record.getValue());
-                
-                // 确保recordId不为空
-                if (record.getRecordId() == null) {
-                    throw new RuntimeException("DNSPod记录ID为空，无法修改记录");
-                }
-                
-                ModifyRecordResponse response = dnspodService.modifyRecord(
-                        mainDomain,
-                        record.getRecordId(),
-                        record.getType(),
-                        record.getLine(),
-                        record.getValue(),
-                        dnspodSubDomain,
-                        null, // domainId
-                        record.getTtl().longValue(),
-                        record.getMx() != null ? record.getMx().longValue() : null,
-                        record.getWeight() != null ? record.getWeight().longValue() : null,
-                        record.getStatus(),
-                        record.getRemark()
-                );
-                
-                // 7. 更新本地记录状态
-                if (response != null && response.getRecordId() != null) {
-                    userDnsRecordService.updateSyncStatus(request.getId(), "SUCCESS", null);
-                    
-                    // 更新返回的记录对象
-                    updatedRecord.setSyncStatus("SUCCESS");
-                    
-                    log.info("DNS解析记录修改成功: recordId={}, dnspodRecordId={}", 
-                            request.getId(), response.getRecordId());
-                } else {
-                    throw new RuntimeException("DNSPod API返回异常");
-                }
-                
-            } catch (Exception e) {
-                log.error("同步DNS记录修改到DNSPod失败", e);
-                
-                // 更新同步状态为失败
-                userDnsRecordService.updateSyncStatus(request.getId(), "FAILED", e.getMessage());
-                updatedRecord.setSyncStatus("FAILED");
-                updatedRecord.setSyncError(e.getMessage());
-                
-                return ApiResponse.error(500, "DNS解析记录修改失败: " + e.getMessage());
-            }
+            log.info("DNS解析记录修改成功: recordId={}, dnspodRecordId={}", 
+                    request.getId(), dnspodResponse.getRecordId());
             
             return ApiResponse.success(updatedRecord);
             
