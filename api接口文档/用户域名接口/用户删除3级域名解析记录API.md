@@ -161,4 +161,28 @@ curl -X POST http://localhost:8080/api/user/dns-records/delete \
 curl -X POST http://localhost:8080/api/user/dns-records/delete \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer invalid_token" \
+  -d '{"recordId": 123}'wt_token}" \
+  -d '{"recordId": 456}'
+
+# 未授权（无效token）
+curl -X POST http://localhost:8080/api/user/dns-records/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer invalid_token" \
+  -d '{"recordId": 123}'lid_token" \
+  -d '{"recordId": 123}'token}" \
+  -d '{"recordId": 456}'
+
+# 未授权（无效token）
+curl -X POST http://localhost:8080/api/user/dns-records/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer invalid_token" \
+  -d '{"recordId": 123}'//localhost:8080/api/user/dns-records/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {jwt_token}" \
+  -d '{"recordId": 456}'
+
+# 未授权（无效token）
+curl -X POST http://localhost:8080/api/user/dns-records/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer invalid_token" \
   -d '{"recordId": 123}'

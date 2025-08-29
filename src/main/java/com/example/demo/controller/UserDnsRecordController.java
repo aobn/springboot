@@ -346,16 +346,6 @@ public class UserDnsRecordController {
                 updatedRecord.setSyncStatus("FAILED");
                 updatedRecord.setSyncError(e.getMessage());
                 
-                // 可选：回滚到原始值
-                // record.setType(originalType);
-                // record.setValue(originalValue);
-                // record.setTtl(originalTtl);
-                // record.setMx(originalMx);
-                // record.setWeight(originalWeight);
-                // record.setStatus(originalStatus);
-                // record.setRemark(originalRemark);
-                // userDnsRecordService.updateRecord(record);
-                
                 return ApiResponse.error(500, "DNS解析记录修改失败: " + e.getMessage());
             }
             
@@ -520,6 +510,7 @@ public class UserDnsRecordController {
     
     /**
      * 删除DNS解析记录（POST方式，JSON格式）
+     * 按照业务流程文档实现的标准删除接口
      * 
      * @param request 删除请求参数
      * @param authHeader Authorization头信息
@@ -530,11 +521,21 @@ public class UserDnsRecordController {
     public ApiResponse<Boolean> deleteDnsRecordPost(
             @Valid @RequestBody DeleteDnsRecordRequest request,
             @RequestHeader("Authorization") String authHeader) {
+        
+        log.info("开始执行DNS解析记录删除业务流程，记录ID: {}", request.getRecordId());
+        
+        // 步骤1：参数验证
+        if (request.getRecordId() == null || request.getRecordId() <= 0) {
+            log.warn("删除DNS记录失败：记录ID无效 - {}", request.getRecordId());
+            return ApiResponse.error(400, "记录ID无效");
+        }
+        
         return deleteDnsRecordInternal(request.getRecordId(), authHeader);
     }
     
     /**
      * 删除DNS解析记录（DELETE方式，路径参数）
+     * 已废弃，请使用POST /delete接口
      * 
      * @param id 记录ID
      * @param authHeader Authorization头信息
@@ -542,6 +543,7 @@ public class UserDnsRecordController {
      */
     @DeleteMapping("/{id}")
     @Transactional
+    @Deprecated
     public ApiResponse<Boolean> deleteDnsRecord(
             @PathVariable Long id,
             @RequestHeader("Authorization") String authHeader) {
@@ -550,36 +552,51 @@ public class UserDnsRecordController {
     
     /**
      * 删除DNS解析记录的内部实现
+     * 严格按照业务流程文档执行
      * 
-     * @param id 记录ID
+     * @param recordId 记录ID
      * @param authHeader Authorization头信息
      * @return 删除结果
      */
     private ApiResponse<Boolean> deleteDnsRecordInternal(
-            Long id,
+            Long recordId,
             String authHeader) {
         try {
-            // 步骤1：用户身份验证(JWT)
-            // 从Authorization头中提取token
-            String token = authHeader.replace("Bearer ", "");
+            log.info("=== 开始DNS解析记录删除业务流程 ===");
             
-            // 从token中获取用户ID
+            // 步骤1：用户身份验证(JWT)
+            log.info("步骤1：执行用户身份验证");
+            String token = authHeader.replace("Bearer ", "");
             Long userId = jwtUtil.getUserIdFromToken(token);
             String email = jwtUtil.getEmailFromToken(token);
+            log.info("用户身份验证成功：userId={}, email={}", userId, email);
             
-            log.info("用户 {} ({}) 请求删除DNS解析记录: {}", userId, email, id);
+            // 步骤2：参数验证和业务规则检查
+            log.info("步骤2：执行参数验证和业务规则检查");
+            if (recordId == null || recordId <= 0) {
+                log.warn("参数验证失败：记录ID无效 - {}", recordId);
+                return ApiResponse.error(400, "记录ID无效");
+            }
+            log.info("参数验证通过：recordId={}", recordId);
             
-            // 步骤2和3：检查记录是否存在且属于当前用户
-            UserDnsRecord record = userDnsRecordService.getRecordById(id);
+            // 步骤3：检查记录是否存在且属于当前用户
+            log.info("步骤3：检查记录存在性和用户权限");
+            UserDnsRecord record = userDnsRecordService.getRecordById(recordId);
             if (record == null) {
+                log.warn("记录不存在：recordId={}", recordId);
                 return ApiResponse.error(404, "DNS解析记录不存在");
             }
             
             if (!record.getUserId().equals(userId)) {
+                log.warn("权限验证失败：用户{}尝试删除不属于自己的记录{}", userId, recordId);
                 return ApiResponse.error(403, "无权限删除该DNS解析记录");
             }
             
-            // 步骤4：如果记录已同步到DNSPod，需要先从DNSPod删除
+            log.info("记录存在性和权限验证通过：recordId={}, userId={}, recordType={}, recordValue={}", 
+                    recordId, userId, record.getType(), record.getValue());
+            
+            // 步骤4：从DNSPod删除记录
+            log.info("步骤4：从DNSPod删除记录");
             if ("SUCCESS".equals(record.getSyncStatus()) && record.getRecordId() != null) {
                 try {
                     UserSubdomain userSubdomain = userSubdomainService.getById(record.getSubdomainId());
@@ -587,23 +604,36 @@ public class UserDnsRecordController {
                         String[] domainParts = userSubdomain.getFullDomain().split("\\.", 2);
                         if (domainParts.length == 2) {
                             String mainDomain = domainParts[1];
+                            log.info("调用DNSPod API删除记录：domain={}, dnspodRecordId={}", 
+                                    mainDomain, record.getRecordId());
                             dnspodService.deleteRecord(mainDomain, record.getRecordId(), null);
-                            log.info("从DNSPod删除记录成功: recordId={}", record.getRecordId());
+                            log.info("从DNSPod删除记录成功：dnspodRecordId={}", record.getRecordId());
+                        } else {
+                            log.warn("域名格式异常，跳过DNSPod删除：fullDomain={}", userSubdomain.getFullDomain());
                         }
+                    } else {
+                        log.warn("子域名不存在，跳过DNSPod删除：subdomainId={}", record.getSubdomainId());
                     }
                 } catch (Exception e) {
-                    // 异常处理：记录警告日志，但继续执行本地删除
-                    log.warn("从DNSPod删除记录失败，但继续删除本地记录: {}", e.getMessage());
+                    log.warn("从DNSPod删除记录失败，但继续删除本地记录：{}", e.getMessage(), e);
                 }
+            } else {
+                log.info("记录未同步到DNSPod或状态异常，跳过DNSPod删除：syncStatus={}, dnspodRecordId={}", 
+                        record.getSyncStatus(), record.getRecordId());
             }
             
-            // 步骤5：删除本地记录
-            boolean deleted = userDnsRecordService.deleteRecord(id);
+            // 步骤5：删除本地数据库记录
+            log.info("步骤5：删除本地数据库记录");
+            boolean deleted = userDnsRecordService.deleteRecord(recordId);
             if (deleted) {
-                log.info("用户 {} 删除DNS解析记录成功: recordId={}", userId, id);
+                log.info("本地DNS记录删除成功：recordId={}", recordId);
+                
                 // 步骤6：返回操作结果
-                return ApiResponse.success(true);
+                log.info("步骤6：返回操作成功结果");
+                log.info("=== DNS解析记录删除业务流程完成 ===");
+                return ApiResponse.success("DNS解析记录删除成功", true);
             } else {
+                log.error("本地DNS记录删除失败：recordId={}", recordId);
                 return ApiResponse.error(500, "删除DNS解析记录失败");
             }
             
