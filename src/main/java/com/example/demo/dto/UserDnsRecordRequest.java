@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /**
  * 用户DNS解析记录请求DTO
@@ -24,18 +26,24 @@ public class UserDnsRecordRequest {
      * 主机记录（如www、mail等，@表示主域名）
      */
     @NotBlank(message = "主机记录不能为空")
+    @Size(max = 100, message = "主机记录长度不能超过100个字符")
+    @Pattern(regexp = "^(@|[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)$", 
+             message = "主机记录格式不正确，只能包含字母、数字、连字符，或使用@表示主域名")
     private String name;
     
     /**
      * 记录类型（A、CNAME、MX、TXT等）
      */
     @NotBlank(message = "记录类型不能为空")
+    @Pattern(regexp = "^(A|AAAA|CNAME|MX|TXT|NS|SRV|PTR)$", 
+             message = "记录类型只能是：A、AAAA、CNAME、MX、TXT、NS、SRV、PTR")
     private String type;
     
     /**
      * 记录值（如IP地址、域名等）
      */
     @NotBlank(message = "记录值不能为空")
+    @Size(max = 500, message = "记录值长度不能超过500个字符")
     private String value;
     
     /**

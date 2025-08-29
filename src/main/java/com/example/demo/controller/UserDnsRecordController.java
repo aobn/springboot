@@ -10,6 +10,7 @@ import com.example.demo.entity.UserSubdomain;
 import com.example.demo.service.DnspodService;
 import com.example.demo.service.UserDnsRecordService;
 import com.example.demo.service.UserSubdomainService;
+import com.example.demo.util.DnsRecordValidator;
 import com.example.demo.util.JwtUtil;
 import com.tencentcloudapi.dnspod.v20210323.models.CreateRecordResponse;
 import com.tencentcloudapi.dnspod.v20210323.models.ModifyRecordResponse;
@@ -92,7 +93,7 @@ public class UserDnsRecordController {
             
             // 3. 验证记录类型和值的格式
             if (!isValidRecordValue(request.getType(), request.getValue())) {
-                return ApiResponse.error(400, "记录值格式不正确");
+                return ApiResponse.error(400, getRecordValueErrorMessage(request.getType(), request.getValue()));
             }
             
             // 4. 创建本地DNS记录（状态为PENDING）
@@ -253,8 +254,11 @@ public class UserDnsRecordController {
             // 4. 验证记录值格式
             String recordType = request.getType() != null ? request.getType() : record.getType();
             String recordValue = request.getValue() != null ? request.getValue() : record.getValue();
-            if (!isValidRecordValue(recordType, recordValue)) {
-                return ApiResponse.error(400, "记录值格式不正确");
+            
+            // 使用新的校验工具类进行更严格的参数校验
+            DnsRecordValidator.ValidationResult validationResult = DnsRecordValidator.validateRecordValue(recordType, recordValue);
+            if (!validationResult.isValid()) {
+                return ApiResponse.error(400, "参数验证失败：" + validationResult.getErrorMessage());
             }
             
             // 5. 调用DNSPod API修改记录（只有DNSPod修改成功后才更新本地数据库）
@@ -711,6 +715,9 @@ public class UserDnsRecordController {
             return false;
         }
         
+        // 去除首尾空格
+        value = value.trim();
+        
         switch (type.toUpperCase()) {
             case "A":
                 return isValidIPv4(value);
@@ -729,15 +736,61 @@ public class UserDnsRecordController {
     
     /**
      * 验证IPv4地址格式
+     * 严格验证IP地址格式，拒绝无效格式如 "a.1.1.1"、"new s.1.1.1" 或域名格式
      */
     private boolean isValidIPv4(String ip) {
+        if (ip == null || ip.trim().isEmpty()) {
+            return false;
+        }
+        
+        ip = ip.trim();
+        
+        // 严格检查：只允许数字和点，不允许字母或其他字符
+        if (!ip.matches("^[0-9.]+$")) {
+            return false;
+        }
+        
+        // 检查是否以点开头或结尾
+        if (ip.startsWith(".") || ip.endsWith(".")) {
+            return false;
+        }
+        
+        // 检查是否包含连续的点
+        if (ip.contains("..")) {
+            return false;
+        }
+        
+        // 检查是否包含空格（防止类似 "1.1.1. 1" 的情况）
+        if (ip.contains(" ")) {
+            return false;
+        }
+        
         String[] parts = ip.split("\\.");
-        if (parts.length != 4) return false;
+        if (parts.length != 4) {
+            return false;
+        }
         
         try {
             for (String part : parts) {
+                // 检查每个部分是否为空
+                if (part.isEmpty()) {
+                    return false;
+                }
+                
+                // 检查是否包含非数字字符
+                if (!part.matches("^[0-9]+$")) {
+                    return false;
+                }
+                
+                // 检查是否有前导零（除了单独的0）
+                if (part.length() > 1 && part.startsWith("0")) {
+                    return false;
+                }
+                
                 int num = Integer.parseInt(part);
-                if (num < 0 || num > 255) return false;
+                if (num < 0 || num > 255) {
+                    return false;
+                }
             }
             return true;
         } catch (NumberFormatException e) {
@@ -755,9 +808,168 @@ public class UserDnsRecordController {
     
     /**
      * 验证域名格式
+     * 严格验证域名格式，确保符合DNS规范
      */
     private boolean isValidDomain(String domain) {
-        return domain.matches("^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*$");
+        if (domain == null || domain.trim().isEmpty()) {
+            return false;
+        }
+        
+        domain = domain.trim();
+        
+        // 域名长度不能超过253个字符
+        if (domain.length() > 253) {
+            return false;
+        }
+        
+        // 域名不能以点开头或结尾
+        if (domain.startsWith(".") || domain.endsWith(".")) {
+            return false;
+        }
+        
+        // 检查是否包含连续的点
+        if (domain.contains("..")) {
+            return false;
+        }
+        
+        // 分割域名各部分进行验证
+        String[] labels = domain.split("\\.");
+        
+        // 至少要有一个标签
+        if (labels.length == 0) {
+            return false;
+        }
+        
+        for (String label : labels) {
+            // 每个标签不能为空
+            if (label.isEmpty()) {
+                return false;
+            }
+            
+            // 每个标签长度不能超过63个字符
+            if (label.length() > 63) {
+                return false;
+            }
+            
+            // 标签不能以连字符开头或结尾
+            if (label.startsWith("-") || label.endsWith("-")) {
+                return false;
+            }
+            
+            // 标签只能包含字母、数字和连字符
+            if (!label.matches("^[a-zA-Z0-9-]+$")) {
+                return false;
+            }
+        }
+        
+        // 顶级域名必须至少包含一个字母
+        String tld = labels[labels.length - 1];
+        if (!tld.matches(".*[a-zA-Z].*")) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * 根据记录类型和值生成详细的错误消息
+     * 
+     * @param type 记录类型
+     * @param value 记录值
+     * @return 详细的错误消息
+     */
+    private String getRecordValueErrorMessage(String type, String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "记录值不能为空";
+        }
+        
+        value = value.trim();
+        
+        switch (type.toUpperCase()) {
+            case "A":
+                return getIPv4ValidationError(value);
+            case "AAAA":
+                return "AAAA记录值必须是有效的IPv6地址格式（如：2001:db8::1），当前值：" + value;
+            case "CNAME":
+                return "CNAME记录值必须是有效的域名格式（如：example.com），当前值：" + value;
+            case "MX":
+                return "MX记录值必须是有效的域名格式（如：mail.example.com），当前值：" + value;
+            case "NS":
+                return "NS记录值必须是有效的域名格式（如：ns1.example.com），当前值：" + value;
+            case "TXT":
+                return "TXT记录值长度不能超过255个字符，当前长度：" + value.length();
+            default:
+                return "记录值格式不正确，当前值：" + value;
+        }
+    }
+    
+    /**
+     * 获取IPv4地址验证的详细错误信息
+     * 
+     * @param ip IP地址字符串
+     * @return 详细的错误信息
+     */
+    private String getIPv4ValidationError(String ip) {
+        if (ip == null || ip.trim().isEmpty()) {
+            return "A记录值不能为空";
+        }
+        
+        ip = ip.trim();
+        
+        // 检查是否包含字母或其他非法字符
+        if (!ip.matches("^[0-9.]+$")) {
+            return "A记录值只能包含数字和点，不能包含字母或其他字符。正确格式如：192.168.1.1，当前值：" + ip;
+        }
+        
+        // 检查是否以点开头或结尾
+        if (ip.startsWith(".") || ip.endsWith(".")) {
+            return "A记录值不能以点开头或结尾。正确格式如：192.168.1.1，当前值：" + ip;
+        }
+        
+        // 检查是否包含连续的点
+        if (ip.contains("..")) {
+            return "A记录值不能包含连续的点。正确格式如：192.168.1.1，当前值：" + ip;
+        }
+        
+        // 检查是否包含空格
+        if (ip.contains(" ")) {
+            return "A记录值不能包含空格。正确格式如：192.168.1.1，当前值：" + ip;
+        }
+        
+        String[] parts = ip.split("\\.");
+        if (parts.length != 4) {
+            return "A记录值必须包含4个数字段，用点分隔。正确格式如：192.168.1.1，当前值：" + ip;
+        }
+        
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            
+            // 检查每个部分是否为空
+            if (part.isEmpty()) {
+                return "A记录值的第" + (i + 1) + "段不能为空。正确格式如：192.168.1.1，当前值：" + ip;
+            }
+            
+            // 检查是否包含非数字字符
+            if (!part.matches("^[0-9]+$")) {
+                return "A记录值的第" + (i + 1) + "段只能包含数字。正确格式如：192.168.1.1，当前值：" + ip;
+            }
+            
+            // 检查是否有前导零（除了单独的0）
+            if (part.length() > 1 && part.startsWith("0")) {
+                return "A记录值的第" + (i + 1) + "段不能有前导零。正确格式如：192.168.1.1，当前值：" + ip;
+            }
+            
+            try {
+                int num = Integer.parseInt(part);
+                if (num < 0 || num > 255) {
+                    return "A记录值的第" + (i + 1) + "段必须在0-255范围内。正确格式如：192.168.1.1，当前值：" + ip;
+                }
+            } catch (NumberFormatException e) {
+                return "A记录值的第" + (i + 1) + "段不是有效数字。正确格式如：192.168.1.1，当前值：" + ip;
+            }
+        }
+        
+        return "A记录值格式不正确。正确格式如：192.168.1.1，当前值：" + ip;
     }
     
     /**
