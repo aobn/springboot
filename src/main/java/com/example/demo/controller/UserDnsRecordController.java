@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.UserDnsRecordRequest;
 import com.example.demo.dto.UserDnsRecordUpdateRequest;
+import com.example.demo.dto.UserDnsRecordQueryRequest;
 import com.example.demo.entity.UserDnsRecord;
 import com.example.demo.entity.UserSubdomain;
 import com.example.demo.service.DnspodService;
@@ -368,7 +369,7 @@ public class UserDnsRecordController {
     }
     
     /**
-     * 获取用户的DNS解析记录列表
+     * 获取用户的DNS解析记录列表（URL参数方式）
      * 
      * @param authHeader Authorization头信息
      * @param subdomainId 可选的子域名ID过滤
@@ -412,6 +413,69 @@ public class UserDnsRecordController {
             }
             
             log.info("用户 {} 查询DNS解析记录，共 {} 条", userId, records.size());
+            return ApiResponse.success(records);
+            
+        } catch (Exception e) {
+            log.error("获取DNS解析记录列表失败", e);
+            return ApiResponse.error(500, "获取DNS解析记录列表失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取用户的DNS解析记录列表（JSON格式）
+     * 
+     * @param request 查询请求参数（JSON格式）
+     * @param authHeader Authorization头信息
+     * @return DNS解析记录列表
+     */
+    @PostMapping("/query")
+    public ApiResponse<List<UserDnsRecord>> getDnsRecordsJson(
+            @Valid @RequestBody UserDnsRecordQueryRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // 从Authorization头中提取token
+            String token = authHeader.replace("Bearer ", "");
+            
+            // 从token中获取用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            String email = jwtUtil.getEmailFromToken(token);
+            
+            log.info("用户 {} ({}) 请求查询DNS解析记录: {}", userId, email, request);
+            
+            List<UserDnsRecord> records;
+            
+            if (request.getSubdomainId() != null) {
+                // 验证用户是否拥有该子域名
+                UserSubdomain userSubdomain = userSubdomainService.getById(request.getSubdomainId());
+                if (userSubdomain == null || !userSubdomain.getUserId().equals(userId)) {
+                    return ApiResponse.error(403, "无权限访问该子域名的解析记录");
+                }
+                
+                records = userDnsRecordService.getRecordsByUserIdAndSubdomainId(userId, request.getSubdomainId());
+            } else {
+                records = userDnsRecordService.getRecordsByUserId(userId);
+            }
+            
+            // 根据条件过滤
+            records = records.stream()
+                    .filter(record -> request.getType() == null || request.getType().equals(record.getType()))
+                    .filter(record -> request.getStatus() == null || request.getStatus().equals(record.getStatus()))
+                    .filter(record -> request.getSyncStatus() == null || request.getSyncStatus().equals(record.getSyncStatus()))
+                    .collect(java.util.stream.Collectors.toList());
+            
+            // 分页处理
+            int total = records.size();
+            int offset = request.getOffset();
+            int limit = request.getLimit();
+            
+            if (offset < total) {
+                int endIndex = Math.min(offset + limit, total);
+                records = records.subList(offset, endIndex);
+            } else {
+                records = java.util.Collections.emptyList();
+            }
+            
+            log.info("用户 {} 查询DNS解析记录成功，共 {} 条（总计 {} 条）", userId, records.size(), total);
             return ApiResponse.success(records);
             
         } catch (Exception e) {
