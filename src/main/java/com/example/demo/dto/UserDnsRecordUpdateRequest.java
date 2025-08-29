@@ -3,6 +3,8 @@ package com.example.demo.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /**
  * 用户DNS解析记录更新请求DTO
@@ -22,11 +24,14 @@ public class UserDnsRecordUpdateRequest {
     /**
      * 记录类型（A、CNAME、MX、TXT等）
      */
+    @Pattern(regexp = "^(A|AAAA|CNAME|MX|TXT|NS|SRV|PTR)$", 
+             message = "记录类型只能是：A、AAAA、CNAME、MX、TXT、NS、SRV、PTR")
     private String type;
     
     /**
      * 记录值（如IP地址、域名等）
      */
+    @Size(max = 500, message = "记录值长度不能超过500个字符")
     private String value;
     
     /**
@@ -58,6 +63,7 @@ public class UserDnsRecordUpdateRequest {
     /**
      * 记录状态（ENABLE或DISABLE）
      */
+    @Pattern(regexp = "^(ENABLE|DISABLE)$", message = "记录状态只能是ENABLE或DISABLE")
     private String status;
     
     /**
