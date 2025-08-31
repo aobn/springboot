@@ -13,8 +13,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 文件名：VerificationCodeController.java
@@ -29,16 +32,24 @@ public class VerificationCodeController {
 
     private static final Logger logger = LoggerFactory.getLogger(VerificationCodeController.class);
     
+    // IP限制：每分钟只能发送一次验证码
+    private static final int RATE_LIMIT_MINUTES = 1;
+    
+    // 存储IP地址和最后发送时间的映射
+    private final Map<String, LocalDateTime> ipLastSendTime = new ConcurrentHashMap<>();
+    
     @Autowired
     private VerificationCodeService verificationCodeService;
     
     /**
      * 发送邮箱验证码
      * @param request 包含邮箱地址的请求
+     * @param httpRequest HTTP请求对象，用于获取客户端IP
      * @return API响应，包含发送结果
      */
     @PostMapping("/send-code")
-    public ApiResponse<Map<String, Object>> sendVerificationCode(@RequestBody VerificationCodeRequest request) {
+    public ApiResponse<Map<String, Object>> sendVerificationCode(@RequestBody VerificationCodeRequest request, 
+                                                                HttpServletRequest httpRequest) {
         logger.info("收到发送验证码请求: {}", request);
         
         String email = request.getEmail();
@@ -46,9 +57,22 @@ public class VerificationCodeController {
             return ApiResponse.error(400, "邮箱地址不能为空");
         }
         
+        // 获取客户端IP地址
+        String clientIp = getClientIpAddress(httpRequest);
+        logger.info("客户端IP: {}", clientIp);
+        
+        // 检查IP限制
+        if (!checkRateLimit(clientIp)) {
+            logger.warn("IP {} 发送验证码过于频繁，被限制", clientIp);
+            return ApiResponse.error(429, "发送验证码过于频繁，请稍后再试");
+        }
+        
         try {
             // 生成并发送验证码
             VerificationCode verificationCode = verificationCodeService.generateAndSendCode(email);
+            
+            // 记录IP发送时间
+            ipLastSendTime.put(clientIp, LocalDateTime.now());
             
             // 构建响应数据（不返回验证码本身，仅返回必要信息）
             Map<String, Object> responseData = new HashMap<>();
@@ -87,5 +111,53 @@ public class VerificationCodeController {
         } else {
             return ApiResponse.error(400, "验证码无效或已过期", false);
         }
+    }
+    
+    /**
+     * 检查IP发送频率限制
+     * @param clientIp 客户端IP地址
+     * @return true表示可以发送，false表示被限制
+     */
+    private boolean checkRateLimit(String clientIp) {
+        LocalDateTime lastSendTime = ipLastSendTime.get(clientIp);
+        if (lastSendTime == null) {
+            return true; // 首次发送
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime allowedTime = lastSendTime.plusMinutes(RATE_LIMIT_MINUTES);
+        
+        return now.isAfter(allowedTime);
+    }
+    
+    /**
+     * 获取客户端真实IP地址
+     * @param request HTTP请求对象
+     * @return 客户端IP地址
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        // 尝试从各种代理头中获取真实IP
+        String[] headers = {
+            "X-Forwarded-For",
+            "X-Real-IP", 
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP",
+            "HTTP_CLIENT_IP",
+            "HTTP_X_FORWARDED_FOR"
+        };
+        
+        for (String header : headers) {
+            String ip = request.getHeader(header);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                // X-Forwarded-For可能包含多个IP，取第一个
+                if (ip.contains(",")) {
+                    ip = ip.split(",")[0].trim();
+                }
+                return ip;
+            }
+        }
+        
+        // 如果没有代理，直接获取远程地址
+        return request.getRemoteAddr();
     }
 }
