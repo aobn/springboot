@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -15,6 +16,7 @@ import java.util.Map;
  * @Slf4j - 自动生成日志对象
  */
 @RestController
+@CrossOrigin(origins = "*", maxAge = 3600)
 @Slf4j
 public class TestController {
     
