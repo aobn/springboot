@@ -1,13 +1,17 @@
 package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
+import com.example.demo.dto.CaptchaRequest;
+import com.example.demo.dto.CaptchaResponse;
 import com.example.demo.dto.VerificationCodeRequest;
 import com.example.demo.dto.VerifyCodeRequest;
 import com.example.demo.entity.VerificationCode;
 import com.example.demo.service.VerificationCodeService;
+import com.example.demo.util.CaptchaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,6 +35,9 @@ public class VerificationCodeController {
     
     @Autowired
     private VerificationCodeService verificationCodeService;
+    
+    @Autowired
+    private CaptchaUtil captchaUtil;
     
     /**
      * 发送邮箱验证码
@@ -86,6 +93,56 @@ public class VerificationCodeController {
             return ApiResponse.success("验证码验证成功", true);
         } else {
             return ApiResponse.error(400, "验证码无效或已过期", false);
+        }
+    }
+    
+    /**
+     * 生成图片验证码
+     * @return API响应，包含验证码ID和Base64编码的图片
+     */
+    @GetMapping("/captcha")
+    public ApiResponse<CaptchaResponse> generateCaptcha() {
+        logger.info("收到生成图片验证码请求");
+        
+        try {
+            CaptchaUtil.CaptchaResult result = captchaUtil.generateCaptcha();
+            
+            CaptchaResponse response = new CaptchaResponse(
+                result.getCaptchaId(),
+                result.getImageBase64(),
+                result.getExpireTime()
+            );
+            
+            return ApiResponse.success("图片验证码生成成功", response);
+        } catch (Exception e) {
+            logger.error("生成图片验证码失败: {}", e.getMessage(), e);
+            return ApiResponse.error(500, "生成图片验证码失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 验证图片验证码
+     * @param request 包含验证码ID和用户输入的验证码
+     * @return API响应，包含验证结果
+     */
+    @PostMapping("/verify-captcha")
+    public ApiResponse<Boolean> verifyCaptcha(@RequestBody CaptchaRequest request) {
+        String captchaId = request.getCaptchaId();
+        String code = request.getCode();
+        
+        logger.info("收到图片验证码验证请求: captchaId={}", captchaId);
+        
+        if (captchaId == null || captchaId.trim().isEmpty() || 
+            code == null || code.trim().isEmpty()) {
+            return ApiResponse.error(400, "验证码ID和验证码不能为空", false);
+        }
+        
+        boolean isValid = captchaUtil.verifyCaptcha(captchaId, code);
+        
+        if (isValid) {
+            return ApiResponse.success("图片验证码验证成功", true);
+        } else {
+            return ApiResponse.error(400, "图片验证码无效或已过期", false);
         }
     }
 }
