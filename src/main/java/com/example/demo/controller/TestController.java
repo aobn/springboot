@@ -16,7 +16,7 @@ import java.util.Map;
  * @Slf4j - 自动生成日志对象
  */
 @RestController
-@CrossOrigin(origins = "*", maxAge = 3600)
+@CrossOrigin(originPatterns = "*", allowCredentials = "true", maxAge = 3600)
 @Slf4j
 public class TestController {
     
