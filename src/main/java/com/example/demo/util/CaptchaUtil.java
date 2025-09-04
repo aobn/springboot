@@ -182,6 +182,47 @@ public class CaptchaUtil {
     }
     
     /**
+     * 验证图片验证码并返回详细的验证结果
+     * @param captchaId 验证码ID
+     * @param userInput 用户输入的验证码
+     * @return 验证结果：SUCCESS-成功，INVALID_CODE-验证码错误，EXPIRED-已过期，NOT_FOUND-未找到，USED-已使用
+     */
+    public String validateCaptcha(String captchaId, String userInput) {
+        if (captchaId == null || userInput == null) {
+            logger.warn("验证码ID或用户输入为空");
+            return "NOT_FOUND";
+        }
+        
+        CaptchaInfo captchaInfo = captchaStore.get(captchaId);
+        if (captchaInfo == null) {
+            logger.warn("未找到验证码ID: {}", captchaId);
+            return "NOT_FOUND";
+        }
+        
+        if (captchaInfo.isExpired()) {
+            logger.warn("验证码已过期，ID: {}", captchaId);
+            captchaStore.remove(captchaId); // 清理过期验证码
+            return "EXPIRED";
+        }
+        
+        if (captchaInfo.isUsed()) {
+            logger.warn("验证码已被使用，ID: {}", captchaId);
+            return "USED";
+        }
+        
+        boolean isValid = captchaInfo.getCode().equalsIgnoreCase(userInput.trim());
+        if (isValid) {
+            captchaInfo.setUsed(true);
+            logger.info("验证码验证成功，ID: {}", captchaId);
+            return "SUCCESS";
+        } else {
+            logger.warn("验证码验证失败，ID: {}, 期望: {}, 实际: {}", 
+                       captchaId, captchaInfo.getCode(), userInput);
+            return "INVALID_CODE";
+        }
+    }
+    
+    /**
      * 清理过期的验证码
      */
     public void cleanExpiredCaptcha() {

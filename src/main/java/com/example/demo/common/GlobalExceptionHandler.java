@@ -12,6 +12,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -134,6 +136,35 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleBadCredentialsException(BadCredentialsException ex) {
         log.warn("凭证错误: {}", ex.getMessage());
         return ApiResponse.error(401, "用户名或密码错误");
+    }
+    
+    /**
+     * 处理接口未找到异常（Spring Boot 2.x）
+     * @param ex 接口未找到异常
+     * @return 统一API响应
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_IMPLEMENTED)
+    public ApiResponse<Void> handleNoHandlerFoundException(NoHandlerFoundException ex) {
+        String requestUrl = ex.getRequestURL();
+        String httpMethod = ex.getHttpMethod();
+        String message = String.format("%s %s 接口未实现", httpMethod, requestUrl);
+        log.warn("接口未实现: {} {}", httpMethod, requestUrl);
+        return ApiResponse.error(501, message);
+    }
+    
+    /**
+     * 处理资源未找到异常（Spring Boot 3.x）
+     * @param ex 资源未找到异常
+     * @return 统一API响应
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_IMPLEMENTED)
+    public ApiResponse<Void> handleNoResourceFoundException(NoResourceFoundException ex) {
+        String resourcePath = ex.getResourcePath();
+        String message = String.format("%s 接口未实现", resourcePath);
+        log.warn("接口未实现: {}", resourcePath);
+        return ApiResponse.error(501, message);
     }
     
     /**

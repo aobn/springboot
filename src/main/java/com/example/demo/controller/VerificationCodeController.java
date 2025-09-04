@@ -161,10 +161,13 @@ public class VerificationCodeController {
             return ApiResponse.error(400, "验证码ID和验证码不能为空", false);
         }
         
-        boolean isValid = captchaUtil.verifyCaptcha(captchaId, code);
+        // 检查验证码是否存在和有效性
+        String validationResult = captchaUtil.validateCaptcha(captchaId, code);
         
-        if (isValid) {
+        if ("SUCCESS".equals(validationResult)) {
             return ApiResponse.success("图片验证码验证成功", true);
+        } else if ("INVALID_CODE".equals(validationResult)) {
+            return ApiResponse.error(400, "请输入正确验证码", false);
         } else {
             return ApiResponse.error(400, "图片验证码无效或已过期", false);
         }
