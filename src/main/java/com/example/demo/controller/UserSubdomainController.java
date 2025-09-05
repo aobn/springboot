@@ -227,6 +227,12 @@ public class UserSubdomainController {
             return ApiResponse.success(result);
             
         } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                // JWT相关异常，重新抛出让全局异常处理器处理
+                log.error("JWT解析失败", e);
+                throw e;
+            }
             log.error("获取用户域名列表失败", e);
             return ApiResponse.error(500, "获取域名列表失败：" + e.getMessage());
         }
@@ -289,6 +295,12 @@ public class UserSubdomainController {
             return ApiResponse.success(result);
             
         } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                // JWT相关异常，重新抛出让全局异常处理器处理
+                log.error("JWT解析失败", e);
+                throw e;
+            }
             return ApiResponse.error(500, "注册域名失败：" + e.getMessage());
         }
     }

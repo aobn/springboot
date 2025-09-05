@@ -1,6 +1,11 @@
 package com.example.demo.common;
 
 import com.example.demo.exception.JwtAuthenticationException;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -100,6 +105,66 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleJwtAuthenticationException(JwtAuthenticationException ex) {
         log.warn("JWT认证异常: {}", ex.getMessage());
         return ApiResponse.error(401, "认证失败: " + ex.getMessage());
+    }
+    
+    /**
+     * 处理JWT签名异常
+     * @param ex JWT签名异常
+     * @return 统一API响应
+     */
+    @ExceptionHandler(SignatureException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<Void> handleJwtSignatureException(SignatureException ex) {
+        log.warn("JWT签名验证失败: {}", ex.getMessage());
+        return ApiResponse.error(401, "令牌无效或已过期");
+    }
+    
+    /**
+     * 处理JWT过期异常
+     * @param ex JWT过期异常
+     * @return 统一API响应
+     */
+    @ExceptionHandler(ExpiredJwtException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<Void> handleJwtExpiredException(ExpiredJwtException ex) {
+        log.warn("JWT令牌已过期: {}", ex.getMessage());
+        return ApiResponse.error(401, "令牌无效或已过期");
+    }
+    
+    /**
+     * 处理JWT格式异常
+     * @param ex JWT格式异常
+     * @return 统一API响应
+     */
+    @ExceptionHandler(MalformedJwtException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<Void> handleJwtMalformedException(MalformedJwtException ex) {
+        log.warn("JWT令牌格式错误: {}", ex.getMessage());
+        return ApiResponse.error(401, "令牌无效或已过期");
+    }
+    
+    /**
+     * 处理JWT不支持异常
+     * @param ex JWT不支持异常
+     * @return 统一API响应
+     */
+    @ExceptionHandler(UnsupportedJwtException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<Void> handleJwtUnsupportedException(UnsupportedJwtException ex) {
+        log.warn("JWT令牌不支持: {}", ex.getMessage());
+        return ApiResponse.error(401, "令牌无效或已过期");
+    }
+    
+    /**
+     * 处理所有JWT相关异常
+     * @param ex JWT异常
+     * @return 统一API响应
+     */
+    @ExceptionHandler(JwtException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<Void> handleJwtException(JwtException ex) {
+        log.warn("JWT处理异常: {}", ex.getMessage());
+        return ApiResponse.error(401, "令牌无效或已过期");
     }
     
     /**

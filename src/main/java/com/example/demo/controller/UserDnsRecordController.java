@@ -183,6 +183,14 @@ public class UserDnsRecordController {
             return ApiResponse.success(savedRecord);
             
         } catch (Exception e) {
+            // 检查是否是JWT相关异常，如果是则重新抛出让全局异常处理器处理
+            if (e instanceof io.jsonwebtoken.JwtException || 
+                e instanceof io.jsonwebtoken.security.SignatureException ||
+                e instanceof io.jsonwebtoken.ExpiredJwtException ||
+                e instanceof io.jsonwebtoken.MalformedJwtException ||
+                e instanceof io.jsonwebtoken.UnsupportedJwtException) {
+                throw e;
+            }
             log.error("添加DNS解析记录失败", e);
             return ApiResponse.error(500, "添加DNS解析记录失败: " + e.getMessage());
         }
@@ -420,6 +428,12 @@ public class UserDnsRecordController {
             return ApiResponse.success(records);
             
         } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                // JWT相关异常，重新抛出让全局异常处理器处理
+                log.error("JWT解析失败", e);
+                throw e;
+            }
             log.error("获取DNS解析记录列表失败", e);
             return ApiResponse.error(500, "获取DNS解析记录列表失败: " + e.getMessage());
         }
@@ -483,6 +497,12 @@ public class UserDnsRecordController {
             return ApiResponse.success(records);
             
         } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                // JWT相关异常，重新抛出让全局异常处理器处理
+                log.error("JWT解析失败", e);
+                throw e;
+            }
             log.error("获取DNS解析记录列表失败", e);
             return ApiResponse.error(500, "获取DNS解析记录列表失败: " + e.getMessage());
         }
