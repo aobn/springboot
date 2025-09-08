@@ -1,5 +1,7 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.common.BusinessException;
+import com.example.demo.dto.UserChangePasswordRequest;
 import com.example.demo.dto.UserRegisterRequest;
 import com.example.demo.dto.UserRegisterVerifyRequest;
 import com.example.demo.entity.User;
@@ -150,5 +152,47 @@ public class UserServiceImpl implements UserService {
     public User findUserByEmail(String email) {
         log.debug("根据邮箱查询用户: {}", email);
         return userMapper.findByEmail(email);
+    }
+    
+    @Override
+    @Transactional
+    public void changePassword(Long userId, UserChangePasswordRequest request) {
+        log.info("用户修改密码: userId={}", userId);
+        
+        // 验证新密码和确认密码是否一致
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            log.warn("新密码和确认密码不一致: userId={}", userId);
+            throw new BusinessException("新密码和确认密码不一致");
+        }
+        
+        // 查询用户信息
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            log.warn("用户不存在: userId={}", userId);
+            throw new BusinessException("用户不存在");
+        }
+        
+        // 验证原密码是否正确
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            log.warn("原密码验证失败: userId={}", userId);
+            throw new BusinessException("原密码不正确");
+        }
+        
+        // 检查新密码是否与原密码相同
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            log.warn("新密码不能与原密码相同: userId={}", userId);
+            throw new BusinessException("新密码不能与当前密码相同");
+        }
+        
+        // 更新密码
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        int updateResult = userMapper.update(user);
+        
+        if (updateResult > 0) {
+            log.info("用户密码修改成功: userId={}", userId);
+        } else {
+            log.error("用户密码修改失败: userId={}", userId);
+            throw new BusinessException("密码修改失败，请稍后重试");
+        }
     }
 }

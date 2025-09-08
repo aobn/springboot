@@ -1,14 +1,19 @@
 package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
+import com.example.demo.common.BusinessException;
 import com.example.demo.common.ResourceNotFoundException;
+import com.example.demo.dto.UserChangePasswordRequest;
 import com.example.demo.entity.User;
 import com.example.demo.service.UserService;
+import com.example.demo.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -27,6 +32,7 @@ public class UserController {
     
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
     
     /**
      * 获取所有用户
@@ -126,5 +132,46 @@ public class UserController {
         }
         userService.deleteUserById(id);
         return ApiResponse.success("用户删除成功", null);
+    }
+    
+    /**
+     * 用户修改密码
+     * 用户通过JWT令牌认证后，输入原密码和新密码来修改密码
+     */
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody UserChangePasswordRequest request, 
+                                          HttpServletRequest httpRequest) {
+        log.info("用户修改密码请求");
+        
+        // 从请求头中获取JWT令牌
+        String authHeader = httpRequest.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new BusinessException(401, "未提供有效的认证令牌");
+        }
+        
+        String token = authHeader.substring(7);
+        
+        // 检查令牌是否为空或格式不正确
+        if (token == null || token.trim().isEmpty()) {
+            throw new BusinessException(401, "认证令牌格式不正确");
+        }
+        
+        // 验证令牌并获取用户ID
+        Long userId;
+        try {
+            userId = jwtUtil.getUserIdFromToken(token);
+            if (userId == null) {
+                throw new BusinessException(401, "无效的认证令牌");
+            }
+        } catch (Exception e) {
+            log.error("JWT令牌解析失败", e);
+            throw new BusinessException(401, "认证令牌已过期或无效");
+        }
+        
+        // 调用服务层修改密码（服务层会进行所有验证并抛出具体异常）
+        userService.changePassword(userId, request);
+        
+        log.info("用户密码修改成功: userId={}", userId);
+        return ApiResponse.success("密码修改成功", null);
     }
 }

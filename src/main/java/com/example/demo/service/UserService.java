@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.UserChangePasswordRequest;
 import com.example.demo.dto.UserRegisterRequest;
 import com.example.demo.dto.UserRegisterVerifyRequest;
 import com.example.demo.entity.User;
@@ -64,4 +65,12 @@ public interface UserService {
      * @return 用户信息，如果不存在则返回null
      */
     User findUserByEmail(String email);
+    
+    /**
+     * 用户修改密码
+     * @param userId 用户ID
+     * @param request 修改密码请求，包含原密码和新密码
+     * @return 是否修改成功
+     */
+    void changePassword(Long userId, UserChangePasswordRequest request);
 }
