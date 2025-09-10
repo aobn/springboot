@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.UserDomainStats;
 import com.example.demo.entity.UserSubdomain;
 
 import java.util.List;
@@ -105,4 +106,28 @@ public interface UserSubdomainService {
      * @return 域名注册信息，如果未注册则返回null
      */
     UserSubdomain checkDomainRegistration(String subdomain, String domain);
+    
+    /**
+     * 获取用户域名使用统计
+     * 
+     * @param userId 用户ID
+     * @return 用户域名统计信息
+     */
+    UserDomainStats getUserDomainStats(Long userId);
+    
+    /**
+     * 检查用户是否可以注册域名
+     * 
+     * @param userId 用户ID
+     * @return 是否可以注册
+     */
+    boolean canUserRegisterDomain(Long userId);
+    
+    /**
+     * 获取用户剩余可注册域名数量
+     * 
+     * @param userId 用户ID
+     * @return 剩余可注册数量
+     */
+    Integer getUserRemainingDomainCount(Long userId);
 }

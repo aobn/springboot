@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
+import com.example.demo.dto.UserDomainStats;
 import com.example.demo.entity.UserSubdomain;
 import com.example.demo.service.UserSubdomainService;
 import com.example.demo.util.JwtUtil;
@@ -279,6 +280,12 @@ public class UserSubdomainController {
             Long userId = jwtUtil.getUserIdFromToken(token);
             String email = jwtUtil.getEmailFromToken(token);
             
+            // 先检查用户是否还能注册域名
+            if (!userSubdomainService.canUserRegisterDomain(userId)) {
+                Integer remaining = userSubdomainService.getUserRemainingDomainCount(userId);
+                return ApiResponse.error(400, "您已达到域名注册数量上限，当前可注册数量：" + (remaining != null ? remaining : 0));
+            }
+            
             // 先检查域名是否已注册
             UserSubdomain existingDomain = userSubdomainService.checkDomainRegistration(
                 request.getSubdomain(), request.getDomain());
@@ -302,6 +309,103 @@ public class UserSubdomainController {
                 throw e;
             }
             return ApiResponse.error(500, "注册域名失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取当前用户的域名使用统计
+     * 
+     * @param authHeader Authorization头信息
+     * @return 用户域名统计信息
+     */
+    @GetMapping("/stats/mine")
+    public ApiResponse<UserDomainStats> getMyDomainStats(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // 从Authorization头中提取token
+            String token = authHeader.replace("Bearer ", "");
+            
+            // 从token中获取用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            // 获取用户域名统计
+            UserDomainStats stats = userSubdomainService.getUserDomainStats(userId);
+            
+            log.info("用户 {} 查询了域名使用统计", userId);
+            return ApiResponse.success(stats);
+            
+        } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                log.error("JWT解析失败", e);
+                throw e;
+            }
+            log.error("获取用户域名统计失败", e);
+            return ApiResponse.error(500, "获取域名统计失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 检查当前用户是否可以注册域名
+     * 
+     * @param authHeader Authorization头信息
+     * @return 检查结果
+     */
+    @GetMapping("/can-register")
+    public ApiResponse<Boolean> canRegisterDomain(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // 从Authorization头中提取token
+            String token = authHeader.replace("Bearer ", "");
+            
+            // 从token中获取用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            // 检查是否可以注册
+            boolean canRegister = userSubdomainService.canUserRegisterDomain(userId);
+            
+            return ApiResponse.success(canRegister);
+            
+        } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                log.error("JWT解析失败", e);
+                throw e;
+            }
+            log.error("检查用户注册权限失败", e);
+            return ApiResponse.error(500, "检查注册权限失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取当前用户剩余可注册域名数量
+     * 
+     * @param authHeader Authorization头信息
+     * @return 剩余可注册数量
+     */
+    @GetMapping("/remaining-count")
+    public ApiResponse<Integer> getRemainingDomainCount(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            // 从Authorization头中提取token
+            String token = authHeader.replace("Bearer ", "");
+            
+            // 从token中获取用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            // 获取剩余可注册数量
+            Integer remainingCount = userSubdomainService.getUserRemainingDomainCount(userId);
+            
+            return ApiResponse.success(remainingCount != null ? remainingCount : 0);
+            
+        } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                log.error("JWT解析失败", e);
+                throw e;
+            }
+            log.error("获取用户剩余域名数量失败", e);
+            return ApiResponse.error(500, "获取剩余数量失败：" + e.getMessage());
         }
     }
 

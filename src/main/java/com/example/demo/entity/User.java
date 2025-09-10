@@ -32,6 +32,7 @@ public class User implements Serializable {
     private String password;
     private String email;
     private String role = UserRole.USER.name(); // 默认为普通用户
+    private Integer domNum = 2; // 可注册域名数量，默认为2个
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     

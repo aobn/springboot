@@ -1,6 +1,9 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.dto.UserDomainStats;
+import com.example.demo.entity.User;
 import com.example.demo.entity.UserSubdomain;
+import com.example.demo.mapper.UserMapper;
 import com.example.demo.mapper.UserSubdomainMapper;
 import com.example.demo.service.UserSubdomainService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,11 +24,25 @@ public class UserSubdomainServiceImpl implements UserSubdomainService {
     @Autowired
     private UserSubdomainMapper userSubdomainMapper;
     
+    @Autowired
+    private UserMapper userMapper;
+    
     @Override
     public UserSubdomain createSubdomain(Long userId, String subdomain, String domain, String remark) {
         // 参数验证
         if (userId == null || !StringUtils.hasText(subdomain) || !StringUtils.hasText(domain)) {
             throw new IllegalArgumentException("用户ID、子域名前缀和主域名不能为空");
+        }
+        
+        // 检查用户是否存在
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        
+        // 检查用户域名注册数量限制
+        if (user.getDomNum() == null || user.getDomNum() <= 0) {
+            throw new IllegalArgumentException("您已达到域名注册数量上限，当前可注册数量：0");
         }
         
         // 构建完整域名
@@ -40,7 +57,7 @@ public class UserSubdomainServiceImpl implements UserSubdomainService {
         UserSubdomain userSubdomain = new UserSubdomain(userId, subdomain, domain, fullDomain);
         userSubdomain.setRemark(remark);
         
-        // 插入数据库
+        // 插入数据库（触发器会自动减少用户的dom_num）
         int result = userSubdomainMapper.insert(userSubdomain);
         if (result > 0) {
             return userSubdomain;
@@ -134,5 +151,30 @@ public class UserSubdomainServiceImpl implements UserSubdomainService {
             return null;
         }
         return userSubdomainMapper.selectBySubdomainAndDomain(subdomain, domain);
+    }
+    
+    @Override
+    public UserDomainStats getUserDomainStats(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("用户ID不能为空");
+        }
+        return userMapper.getUserDomainStats(userId);
+    }
+    
+    @Override
+    public boolean canUserRegisterDomain(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        Integer remainingCount = getUserRemainingDomainCount(userId);
+        return remainingCount != null && remainingCount > 0;
+    }
+    
+    @Override
+    public Integer getUserRemainingDomainCount(Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        return userMapper.getUserDomainLimit(userId);
     }
 }
