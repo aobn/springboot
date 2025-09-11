@@ -4,12 +4,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.dto.PageRequest;
+import com.example.demo.dto.PageResponse;
 import com.example.demo.entity.Admin;
+import com.example.demo.entity.User;
 import com.example.demo.enums.UserRole;
 import com.example.demo.mapper.AdminMapper;
+import com.example.demo.mapper.UserMapper;
 import com.example.demo.service.AdminService;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
 
 /**
  * 文件名：AdminServiceImpl.java
@@ -24,6 +30,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private AdminMapper adminMapper;
+    
+    @Autowired
+    private UserMapper userMapper;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -154,5 +163,63 @@ public class AdminServiceImpl implements AdminService {
         result.setPassword(null);
         
         return result;
+    }
+    
+    @Override
+    public PageResponse<User> getUserList(PageRequest pageRequest) {
+        log.info("管理员获取用户列表，页码: {}, 每页大小: {}", pageRequest.getPage(), pageRequest.getSize());
+        
+        // 验证分页参数
+        pageRequest.validate();
+        
+        // 查询用户列表
+        List<User> users = userMapper.findUsersWithPagination(
+            pageRequest.getOffset(), 
+            pageRequest.getSize(),
+            pageRequest.getSortBy(),
+            pageRequest.getSortDir()
+        );
+        
+        // 清除密码信息
+        users.forEach(user -> user.setPassword(null));
+        
+        // 查询总数
+        Long total = userMapper.countUsers();
+        
+        log.info("获取用户列表成功，共 {} 条记录，当前页 {} 条", total, users.size());
+        
+        return PageResponse.of(users, pageRequest.getPage(), pageRequest.getSize(), total);
+    }
+    
+    @Override
+    public PageResponse<User> searchUsers(String keyword, PageRequest pageRequest) {
+        log.info("管理员搜索用户，关键词: {}, 页码: {}, 每页大小: {}", keyword, pageRequest.getPage(), pageRequest.getSize());
+        
+        // 验证分页参数
+        pageRequest.validate();
+        
+        // 如果关键词为空，返回所有用户
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getUserList(pageRequest);
+        }
+        
+        // 搜索用户列表
+        List<User> users = userMapper.searchUsersWithPagination(
+            keyword.trim(),
+            pageRequest.getOffset(), 
+            pageRequest.getSize(),
+            pageRequest.getSortBy(),
+            pageRequest.getSortDir()
+        );
+        
+        // 清除密码信息
+        users.forEach(user -> user.setPassword(null));
+        
+        // 查询搜索结果总数
+        Long total = userMapper.countSearchUsers(keyword.trim());
+        
+        log.info("搜索用户成功，共 {} 条记录，当前页 {} 条", total, users.size());
+        
+        return PageResponse.of(users, pageRequest.getPage(), pageRequest.getSize(), total);
     }
 }

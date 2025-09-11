@@ -7,13 +7,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.AdminLoginRequest;
 import com.example.demo.dto.AdminRegisterRequest;
 import com.example.demo.dto.AdminUpdateRequest;
+import com.example.demo.dto.PageRequest;
+import com.example.demo.dto.PageResponse;
 import com.example.demo.entity.Admin;
+import com.example.demo.entity.User;
 import com.example.demo.service.AdminService;
 import com.example.demo.util.JwtUtil;
 
@@ -164,6 +168,80 @@ public class AdminController {
             return ApiResponse.success(updatedAdmin);
         } catch (Exception e) {
             log.error("更新管理员信息失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取用户列表（分页）
+     * @param page 页码，默认1
+     * @param size 每页大小，默认3000
+     * @param sortBy 排序字段，默认id
+     * @param sortDir 排序方向，默认ASC
+     * @return 分页用户列表
+     */
+    @GetMapping("/users")
+    public ApiResponse<PageResponse<User>> getUserList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "3000") Integer size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "ASC") String sortDir) {
+        
+        log.info("管理员获取用户列表，页码: {}, 每页大小: {}, 排序: {} {}", page, size, sortBy, sortDir);
+        
+        try {
+            // 创建分页请求对象
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSortBy(sortBy);
+            pageRequest.setSortDir(sortDir);
+            
+            // 获取用户列表
+            PageResponse<User> result = adminService.getUserList(pageRequest);
+            
+            log.info("获取用户列表成功，总数: {}, 当前页: {} 条", result.getTotal(), result.getContent().size());
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("获取用户列表失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 搜索用户（分页）
+     * @param keyword 搜索关键词
+     * @param page 页码，默认1
+     * @param size 每页大小，默认3000
+     * @param sortBy 排序字段，默认id
+     * @param sortDir 排序方向，默认ASC
+     * @return 分页用户列表
+     */
+    @GetMapping("/users/search")
+    public ApiResponse<PageResponse<User>> searchUsers(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "3000") Integer size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "ASC") String sortDir) {
+        
+        log.info("管理员搜索用户，关键词: {}, 页码: {}, 每页大小: {}", keyword, page, size);
+        
+        try {
+            // 创建分页请求对象
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSortBy(sortBy);
+            pageRequest.setSortDir(sortDir);
+            
+            // 搜索用户
+            PageResponse<User> result = adminService.searchUsers(keyword, pageRequest);
+            
+            log.info("搜索用户成功，总数: {}, 当前页: {} 条", result.getTotal(), result.getContent().size());
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("搜索用户失败: {}", e.getMessage());
             return ApiResponse.error(500, e.getMessage());
         }
     }

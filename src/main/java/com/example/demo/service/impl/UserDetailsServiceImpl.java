@@ -36,9 +36,40 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String principal) throws UsernameNotFoundException {
+        // 检查是否包含角色信息（格式：userId:role）
+        String[] parts = principal.split(":");
+        String userIdStr = parts[0];
+        String roleHint = parts.length > 1 ? parts[1] : null;
+        
         // 尝试将principal解析为用户ID
         try {
-            Long userId = Long.parseLong(principal);
+            Long userId = Long.parseLong(userIdStr);
+            
+            // 如果有角色提示，优先查找对应的表
+            if ("ADMIN".equals(roleHint)) {
+                // 优先查找管理员
+                Admin admin = adminMapper.findById(userId);
+                if (admin != null) {
+                    String role = admin.getRole() != null ? admin.getRole() : "ADMIN";
+                    String fullRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+                    return new org.springframework.security.core.userdetails.User(
+                            admin.getId().toString(),
+                            admin.getPassword(),
+                            Collections.singletonList(new SimpleGrantedAuthority(fullRole))
+                    );
+                }
+            } else {
+                // 优先查找普通用户
+                User user = userMapper.findById(userId);
+                if (user != null) {
+                    String role = user.getRole() != null ? user.getRole() : "USER";
+                    return new org.springframework.security.core.userdetails.User(
+                            user.getId().toString(),
+                            user.getPassword(),
+                            Collections.singletonList(new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
+                    );
+                }
+            }
             
             // 先尝试查找普通用户
             User user = userMapper.findById(userId);
@@ -56,11 +87,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             Admin admin = adminMapper.findById(userId);
             if (admin != null) {
                 // 创建UserDetails对象，设置管理员角色
-                String role = admin.getRole() != null ? admin.getRole() : "ROLE_ADMIN";
+                String role = admin.getRole() != null ? admin.getRole() : "ADMIN";
+                // 确保角色以ROLE_开头
+                String fullRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
                 return new org.springframework.security.core.userdetails.User(
                         admin.getId().toString(), // 使用管理员ID作为Spring Security的用户标识
                         admin.getPassword(),
-                        Collections.singletonList(new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
+                        Collections.singletonList(new SimpleGrantedAuthority(fullRole))
                 );
             }
             
@@ -92,11 +125,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             
             if (admin != null) {
                 // 创建UserDetails对象，设置管理员角色
-                String role = admin.getRole() != null ? admin.getRole() : "ROLE_ADMIN";
+                String role = admin.getRole() != null ? admin.getRole() : "ADMIN";
+                // 确保角色以ROLE_开头
+                String fullRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
                 return new org.springframework.security.core.userdetails.User(
                         admin.getId().toString(), // 使用管理员ID作为Spring Security的用户标识
                         admin.getPassword(),
-                        Collections.singletonList(new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
+                        Collections.singletonList(new SimpleGrantedAuthority(fullRole))
                 );
             }
             

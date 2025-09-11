@@ -46,10 +46,16 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 // 公开接口，无需认证
                 .requestMatchers("/api/auth/**", "/api/verification/**", "/api/test/**").permitAll()
+                // 管理员登录接口，无需认证
+                .requestMatchers("/api/admin/login", "/api/admin/register").permitAll()
+                // 其他管理员接口，只允许ADMIN角色访问
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // DNSPod相关接口暂时允许访问，无需认证（便于测试）
                 .requestMatchers("/api/dnspod/**").permitAll()
-                // 其他接口暂时允许访问，无需认证
-                .anyRequest().permitAll()
+                // 用户相关接口，需要认证（USER或ADMIN角色）
+                .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
+                // 其他接口需要认证
+                .anyRequest().authenticated()
             )
             // 设置自定义认证入口点
             .exceptionHandling(exceptions -> exceptions

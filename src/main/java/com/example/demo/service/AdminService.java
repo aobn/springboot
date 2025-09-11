@@ -1,6 +1,9 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.PageRequest;
+import com.example.demo.dto.PageResponse;
 import com.example.demo.entity.Admin;
+import com.example.demo.entity.User;
 
 /**
  * 文件名：AdminService.java
@@ -48,4 +51,19 @@ public interface AdminService {
      * @return 更新后的管理员信息（不含密码）
      */
     Admin update(Admin admin);
+    
+    /**
+     * 分页获取用户列表
+     * @param pageRequest 分页请求参数
+     * @return 分页用户列表
+     */
+    PageResponse<User> getUserList(PageRequest pageRequest);
+    
+    /**
+     * 搜索用户（分页）
+     * @param keyword 搜索关键词
+     * @param pageRequest 分页请求参数
+     * @return 分页用户列表
+     */
+    PageResponse<User> searchUsers(String keyword, PageRequest pageRequest);
 }

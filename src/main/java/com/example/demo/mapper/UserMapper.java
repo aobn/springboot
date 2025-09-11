@@ -94,4 +94,52 @@ public interface UserMapper {
         @Result(property = "registrationStatus", column = "registration_status")
     })
     UserDomainStats getUserDomainStats(Long userId);
+    
+    /**
+     * 分页查询用户列表
+     * @param offset 偏移量
+     * @param size 每页大小
+     * @param sortBy 排序字段
+     * @param sortDir 排序方向
+     * @return 用户列表
+     */
+    @Select("SELECT * FROM user ORDER BY ${sortBy} ${sortDir} LIMIT #{offset}, #{size}")
+    List<User> findUsersWithPagination(@Param("offset") Integer offset, 
+                                      @Param("size") Integer size,
+                                      @Param("sortBy") String sortBy,
+                                      @Param("sortDir") String sortDir);
+    
+    /**
+     * 获取用户总数
+     * @return 用户总数
+     */
+    @Select("SELECT COUNT(*) FROM user")
+    Long countUsers();
+    
+    /**
+     * 根据关键词搜索用户（分页）
+     * @param keyword 搜索关键词
+     * @param offset 偏移量
+     * @param size 每页大小
+     * @param sortBy 排序字段
+     * @param sortDir 排序方向
+     * @return 用户列表
+     */
+    @Select("SELECT * FROM user WHERE username LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR email LIKE CONCAT('%', #{keyword}, '%') " +
+            "ORDER BY ${sortBy} ${sortDir} LIMIT #{offset}, #{size}")
+    List<User> searchUsersWithPagination(@Param("keyword") String keyword,
+                                        @Param("offset") Integer offset, 
+                                        @Param("size") Integer size,
+                                        @Param("sortBy") String sortBy,
+                                        @Param("sortDir") String sortDir);
+    
+    /**
+     * 根据关键词搜索用户总数
+     * @param keyword 搜索关键词
+     * @return 搜索结果总数
+     */
+    @Select("SELECT COUNT(*) FROM user WHERE username LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR email LIKE CONCAT('%', #{keyword}, '%')")
+    Long countSearchUsers(@Param("keyword") String keyword);
 }

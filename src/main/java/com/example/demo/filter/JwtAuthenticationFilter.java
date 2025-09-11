@@ -74,8 +74,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 如果成功提取用户ID且当前SecurityContext中没有认证信息
         if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
-                // 根据用户ID加载用户详情
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userId.toString());
+                // 根据用户ID和角色加载用户详情
+                String userIdentifier = userId.toString() + ":" + (role != null ? role : "USER");
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userIdentifier);
                 
                 // 验证JWT令牌
                 if (jwtUtil.validateToken(jwt, userId)) {
