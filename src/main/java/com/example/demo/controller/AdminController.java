@@ -14,8 +14,10 @@ import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.AdminLoginRequest;
 import com.example.demo.dto.AdminRegisterRequest;
 import com.example.demo.dto.AdminUpdateRequest;
+import com.example.demo.dto.AdminUserDomainQueryRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UserDomainInfo;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
 import com.example.demo.service.AdminService;
@@ -242,6 +244,28 @@ public class AdminController {
             return ApiResponse.success(result);
         } catch (Exception e) {
             log.error("搜索用户失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 管理员获取用户已注册域名列表（支持分页和模糊查询）
+     * @param request 查询请求参数
+     * @return 分页域名列表
+     */
+    @PostMapping("/users/domains")
+    public ApiResponse<PageResponse<UserDomainInfo>> getUserDomains(@RequestBody AdminUserDomainQueryRequest request) {
+        log.info("管理员获取用户域名列表，页码: {}, 每页大小: {}, 关键词: {}", 
+                request.getPage(), request.getSize(), request.getKeyword());
+        
+        try {
+            // 获取用户域名列表
+            PageResponse<UserDomainInfo> result = adminService.getUserDomains(request);
+            
+            log.info("获取用户域名列表成功，总数: {}, 当前页: {} 条", result.getTotal(), result.getContent().size());
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("获取用户域名列表失败: {}", e.getMessage());
             return ApiResponse.error(500, e.getMessage());
         }
     }

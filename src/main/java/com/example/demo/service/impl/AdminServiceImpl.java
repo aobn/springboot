@@ -4,13 +4,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.dto.AdminUserDomainQueryRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UserDomainInfo;
+import com.example.demo.dto.UserSubdomainWithUser;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
 import com.example.demo.enums.UserRole;
 import com.example.demo.mapper.AdminMapper;
 import com.example.demo.mapper.UserMapper;
+import com.example.demo.mapper.UserSubdomainMapper;
 import com.example.demo.service.AdminService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +37,9 @@ public class AdminServiceImpl implements AdminService {
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private UserSubdomainMapper userSubdomainMapper;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -221,5 +228,51 @@ public class AdminServiceImpl implements AdminService {
         log.info("搜索用户成功，共 {} 条记录，当前页 {} 条", total, users.size());
         
         return PageResponse.of(users, pageRequest.getPage(), pageRequest.getSize(), total);
+    }
+    
+    @Override
+    public PageResponse<UserDomainInfo> getUserDomains(AdminUserDomainQueryRequest request) {
+        log.info("管理员获取用户域名列表，页码: {}, 每页大小: {}, 关键词: {}", 
+                request.getPage(), request.getSize(), request.getKeyword());
+        
+        // 验证并设置默认值
+        request.validate();
+        
+        // 计算偏移量
+        int offset = (request.getPage() - 1) * request.getSize();
+        
+        // 查询域名列表
+        List<UserSubdomainWithUser> userSubdomains = userSubdomainMapper.selectUserDomainsWithPagination(
+            request.getKeyword(),
+            request.getUserId(),
+            request.getStatus(),
+            request.getDomain(),
+            request.getSortBy(),
+            request.getSortDir(),
+            offset,
+            request.getSize()
+        );
+        
+        // 转换为DTO并设置用户信息
+        List<UserDomainInfo> domainInfos = userSubdomains.stream()
+            .map(userSubdomain -> {
+                UserDomainInfo info = UserDomainInfo.fromUserSubdomain(userSubdomain);
+                info.setUsername(userSubdomain.getUsername());
+                info.setEmail(userSubdomain.getEmail());
+                return info;
+            })
+            .collect(java.util.stream.Collectors.toList());
+        
+        // 查询总数
+        Long total = userSubdomainMapper.countUserDomainsWithConditions(
+            request.getKeyword(),
+            request.getUserId(),
+            request.getStatus(),
+            request.getDomain()
+        );
+        
+        log.info("获取用户域名列表成功，共 {} 条记录，当前页 {} 条", total, domainInfos.size());
+        
+        return PageResponse.of(domainInfos, request.getPage(), request.getSize(), total);
     }
 }

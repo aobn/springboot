@@ -66,4 +66,11 @@ public interface AdminService {
      * @return 分页用户列表
      */
     PageResponse<User> searchUsers(String keyword, PageRequest pageRequest);
+    
+    /**
+     * 管理员获取用户已注册域名列表（支持分页和模糊查询）
+     * @param request 查询请求参数
+     * @return 分页域名列表
+     */
+    PageResponse<com.example.demo.dto.UserDomainInfo> getUserDomains(com.example.demo.dto.AdminUserDomainQueryRequest request);
 }

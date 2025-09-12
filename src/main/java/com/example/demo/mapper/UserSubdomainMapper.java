@@ -117,4 +117,103 @@ public interface UserSubdomainMapper {
      */
     @Select("SELECT * FROM user_subdomain WHERE subdomain = #{subdomain} AND domain = #{domain} AND status != 'DELETED'")
     UserSubdomain selectBySubdomainAndDomain(@Param("subdomain") String subdomain, @Param("domain") String domain);
+    
+    /**
+     * 管理员分页查询用户域名列表（支持模糊搜索）
+     * 
+     * @param keyword 搜索关键词
+     * @param userId 用户ID
+     * @param status 域名状态
+     * @param domain 主域名
+     * @param sortBy 排序字段
+     * @param sortDir 排序方向
+     * @param offset 偏移量
+     * @param limit 限制数量
+     * @return 用户域名列表
+     */
+    @Select("<script>" +
+            "SELECT us.id, us.user_id, us.subdomain, us.domain, us.full_domain, " +
+            "us.status, us.remark, us.create_time, us.update_time, " +
+            "u.username, u.email " +
+            "FROM user_subdomain us " +
+            "LEFT JOIN user u ON us.user_id = u.id " +
+            "WHERE 1=1 " +
+            "<if test='keyword != null and keyword != \"\"'>" +
+            "AND (u.username LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR u.email LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR us.subdomain LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR us.domain LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR us.full_domain LIKE CONCAT('%', #{keyword}, '%')) " +
+            "</if>" +
+            "<if test='userId != null'>" +
+            "AND us.user_id = #{userId} " +
+            "</if>" +
+            "<if test='status != null and status != \"\"'>" +
+            "AND us.status = #{status} " +
+            "</if>" +
+            "<if test='domain != null and domain != \"\"'>" +
+            "AND us.domain = #{domain} " +
+            "</if>" +
+            "ORDER BY us.${sortBy} ${sortDir} " +
+            "LIMIT #{offset}, #{limit}" +
+            "</script>")
+    @Results({
+        @Result(property = "id", column = "id"),
+        @Result(property = "userId", column = "user_id"),
+        @Result(property = "subdomain", column = "subdomain"),
+        @Result(property = "domain", column = "domain"),
+        @Result(property = "fullDomain", column = "full_domain"),
+        @Result(property = "status", column = "status"),
+        @Result(property = "remark", column = "remark"),
+        @Result(property = "createTime", column = "create_time"),
+        @Result(property = "updateTime", column = "update_time"),
+        @Result(property = "username", column = "username"),
+        @Result(property = "email", column = "email")
+    })
+    List<com.example.demo.dto.UserSubdomainWithUser> selectUserDomainsWithPagination(
+            @Param("keyword") String keyword,
+            @Param("userId") Long userId,
+            @Param("status") String status,
+            @Param("domain") String domain,
+            @Param("sortBy") String sortBy,
+            @Param("sortDir") String sortDir,
+            @Param("offset") Integer offset,
+            @Param("limit") Integer limit);
+    
+    /**
+     * 管理员查询用户域名总数（支持模糊搜索）
+     * 
+     * @param keyword 搜索关键词
+     * @param userId 用户ID
+     * @param status 域名状态
+     * @param domain 主域名
+     * @return 总数
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) " +
+            "FROM user_subdomain us " +
+            "LEFT JOIN user u ON us.user_id = u.id " +
+            "WHERE 1=1 " +
+            "<if test='keyword != null and keyword != \"\"'>" +
+            "AND (u.username LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR u.email LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR us.subdomain LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR us.domain LIKE CONCAT('%', #{keyword}, '%') " +
+            "OR us.full_domain LIKE CONCAT('%', #{keyword}, '%')) " +
+            "</if>" +
+            "<if test='userId != null'>" +
+            "AND us.user_id = #{userId} " +
+            "</if>" +
+            "<if test='status != null and status != \"\"'>" +
+            "AND us.status = #{status} " +
+            "</if>" +
+            "<if test='domain != null and domain != \"\"'>" +
+            "AND us.domain = #{domain} " +
+            "</if>" +
+            "</script>")
+    Long countUserDomainsWithConditions(
+            @Param("keyword") String keyword,
+            @Param("userId") Long userId,
+            @Param("status") String status,
+            @Param("domain") String domain);
 }
