@@ -7,8 +7,10 @@ import org.springframework.stereotype.Service;
 import com.example.demo.dto.AdminDnsRecordQueryRequest;
 import com.example.demo.dto.AdminUserDomainQueryRequest;
 import com.example.demo.dto.AdminUserQueryRequest;
+import com.example.demo.dto.BanUserRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UnbanUserRequest;
 import com.example.demo.dto.UserDnsRecordInfo;
 import com.example.demo.dto.UserDnsRecordWithUser;
 import com.example.demo.dto.UserDomainInfo;
@@ -399,6 +401,120 @@ public class AdminServiceImpl implements AdminService {
         } catch (Exception e) {
             log.error("获取用户信息列表失败: {}", e.getMessage(), e);
             throw new RuntimeException("获取用户信息列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 管理员封禁用户账户
+     */
+    @Override
+    public String banUser(BanUserRequest request, Long adminId) {
+        try {
+            log.info("管理员 {} 开始封禁用户 {}，封禁原因: {}", adminId, request.getUserId(), request.getBanReason());
+            
+            // 参数验证
+            if (!request.isValid()) {
+                String error = request.getValidationError();
+                log.warn("封禁用户参数验证失败: {}", error);
+                throw new RuntimeException(error);
+            }
+            
+            // 检查用户是否存在
+            User user = userMapper.findById(request.getUserId());
+            if (user == null) {
+                log.warn("封禁失败，用户不存在: {}", request.getUserId());
+                throw new RuntimeException("用户不存在");
+            }
+            
+            // 检查用户是否已被封禁
+            if ("BANNED".equals(user.getStatus())) {
+                log.warn("封禁失败，用户已被封禁: {}", request.getUserId());
+                throw new RuntimeException("用户已被封禁");
+            }
+            
+            // 执行封禁操作
+            int result = userMapper.banUser(request.getUserId(), request.getBanReason().trim(), adminId);
+            if (result > 0) {
+                log.info("用户封禁成功: 用户ID={}, 管理员ID={}", request.getUserId(), adminId);
+                return "用户封禁成功";
+            } else {
+                log.error("用户封禁失败: 数据库更新失败");
+                throw new RuntimeException("封禁操作失败");
+            }
+            
+        } catch (Exception e) {
+            log.error("封禁用户失败: {}", e.getMessage(), e);
+            throw new RuntimeException("封禁用户失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 管理员解封用户账户
+     */
+    @Override
+    public String unbanUser(UnbanUserRequest request) {
+        try {
+            log.info("开始解封用户 {}", request.getUserId());
+            
+            // 参数验证
+            if (!request.isValid()) {
+                String error = request.getValidationError();
+                log.warn("解封用户参数验证失败: {}", error);
+                throw new RuntimeException(error);
+            }
+            
+            // 检查用户是否存在
+            User user = userMapper.findById(request.getUserId());
+            if (user == null) {
+                log.warn("解封失败，用户不存在: {}", request.getUserId());
+                throw new RuntimeException("用户不存在");
+            }
+            
+            // 检查用户是否被封禁
+            if (!"BANNED".equals(user.getStatus())) {
+                log.warn("解封失败，用户未被封禁: {}", request.getUserId());
+                throw new RuntimeException("用户未被封禁");
+            }
+            
+            // 执行解封操作
+            int result = userMapper.unbanUser(request.getUserId());
+            if (result > 0) {
+                log.info("用户解封成功: 用户ID={}", request.getUserId());
+                return "用户解封成功";
+            } else {
+                log.error("用户解封失败: 数据库更新失败");
+                throw new RuntimeException("解封操作失败");
+            }
+            
+        } catch (Exception e) {
+            log.error("解封用户失败: {}", e.getMessage(), e);
+            throw new RuntimeException("解封用户失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 检查用户是否被封禁
+     */
+    @Override
+    public boolean isUserBanned(Long userId) {
+        try {
+            return userMapper.isUserBanned(userId);
+        } catch (Exception e) {
+            log.error("检查用户封禁状态失败: {}", e.getMessage(), e);
+            return false; // 出错时默认返回未封禁
+        }
+    }
+
+    /**
+     * 获取用户封禁状态详情
+     */
+    @Override
+    public User getUserBanStatus(Long userId) {
+        try {
+            return userMapper.getUserBanStatus(userId);
+        } catch (Exception e) {
+            log.error("获取用户封禁状态详情失败: {}", e.getMessage(), e);
+            return null;
         }
     }
 }

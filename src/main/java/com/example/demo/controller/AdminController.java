@@ -17,8 +17,10 @@ import com.example.demo.dto.AdminRegisterRequest;
 import com.example.demo.dto.AdminUpdateRequest;
 import com.example.demo.dto.AdminUserDomainQueryRequest;
 import com.example.demo.dto.AdminUserQueryRequest;
+import com.example.demo.dto.BanUserRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UnbanUserRequest;
 import com.example.demo.dto.UserDnsRecordInfo;
 import com.example.demo.dto.UserDomainInfo;
 import com.example.demo.dto.UserInfoResponse;
@@ -314,6 +316,94 @@ public class AdminController {
             return ApiResponse.success(result);
         } catch (Exception e) {
             log.error("获取用户信息列表失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 管理员封禁用户账户
+     * @param request 封禁请求参数
+     * @return 封禁结果
+     */
+    @PostMapping("/users/ban")
+    public ApiResponse<String> banUser(@RequestBody BanUserRequest request) {
+        log.info("管理员封禁用户请求，用户ID: {}, 封禁原因: {}", request.getUserId(), request.getBanReason());
+        
+        try {
+            // 从JWT令牌中获取管理员ID（这里简化处理，实际应该从请求头中解析JWT）
+            // 暂时使用固定管理员ID，后续可以通过JWT解析获取
+            Long adminId = 1L; // TODO: 从JWT令牌中获取管理员ID
+            
+            String result = adminService.banUser(request, adminId);
+            
+            log.info("用户封禁成功，用户ID: {}", request.getUserId());
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("封禁用户失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 管理员解封用户账户
+     * @param request 解封请求参数
+     * @return 解封结果
+     */
+    @PostMapping("/users/unban")
+    public ApiResponse<String> unbanUser(@RequestBody UnbanUserRequest request) {
+        log.info("管理员解封用户请求，用户ID: {}", request.getUserId());
+        
+        try {
+            String result = adminService.unbanUser(request);
+            
+            log.info("用户解封成功，用户ID: {}", request.getUserId());
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("解封用户失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 检查用户是否被封禁
+     * @param userId 用户ID
+     * @return 封禁状态
+     */
+    @GetMapping("/users/{userId}/ban-status")
+    public ApiResponse<Boolean> checkUserBanStatus(@PathVariable Long userId) {
+        log.info("检查用户封禁状态，用户ID: {}", userId);
+        
+        try {
+            boolean isBanned = adminService.isUserBanned(userId);
+            
+            log.info("用户封禁状态查询成功，用户ID: {}, 是否被封禁: {}", userId, isBanned);
+            return ApiResponse.success(isBanned);
+        } catch (Exception e) {
+            log.error("检查用户封禁状态失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取用户封禁详情
+     * @param userId 用户ID
+     * @return 用户封禁详情
+     */
+    @GetMapping("/users/{userId}/ban-details")
+    public ApiResponse<User> getUserBanDetails(@PathVariable Long userId) {
+        log.info("获取用户封禁详情，用户ID: {}", userId);
+        
+        try {
+            User userBanStatus = adminService.getUserBanStatus(userId);
+            
+            if (userBanStatus == null) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+            
+            log.info("用户封禁详情获取成功，用户ID: {}", userId);
+            return ApiResponse.success(userBanStatus);
+        } catch (Exception e) {
+            log.error("获取用户封禁详情失败: {}", e.getMessage());
             return ApiResponse.error(500, e.getMessage());
         }
     }

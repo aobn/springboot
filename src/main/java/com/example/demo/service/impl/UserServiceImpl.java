@@ -1,6 +1,7 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.common.BusinessException;
+import com.example.demo.dto.LoginResult;
 import com.example.demo.dto.UserChangePasswordRequest;
 import com.example.demo.dto.UserRegisterRequest;
 import com.example.demo.dto.UserRegisterVerifyRequest;
@@ -41,7 +42,7 @@ public class UserServiceImpl implements UserService {
      * @return 登录成功返回用户信息，失败返回null
      */
     @Override
-    public User login(String email, String password) {
+    public LoginResult login(String email, String password) {
         log.info("用户登录: {}", email);
         
         // 根据邮箱查询用户
@@ -50,11 +51,17 @@ public class UserServiceImpl implements UserService {
         // 用户不存在或密码不匹配
         if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
             log.warn("登录失败: 用户不存在或密码错误 - {}", email);
-            return null;
+            return LoginResult.failure("邮箱或密码错误");
+        }
+        
+        // 检查用户是否被封禁
+        if ("BANNED".equals(user.getStatus())) {
+            log.warn("登录失败: 用户已被封禁 - {} (用户ID: {}), 封禁原因: {}", email, user.getId(), user.getBanReason());
+            return LoginResult.banned(user.getBanReason() != null ? user.getBanReason() : "账户已被封禁");
         }
         
         log.info("用户登录成功: {}", email);
-        return user;
+        return LoginResult.success(user);
     }
     
     @Override

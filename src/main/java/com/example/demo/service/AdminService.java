@@ -1,8 +1,10 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.AdminUserQueryRequest;
+import com.example.demo.dto.BanUserRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UnbanUserRequest;
 import com.example.demo.dto.UserInfoResponse;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
@@ -89,4 +91,35 @@ public interface AdminService {
      * @return 分页用户信息列表
      */
     PageResponse<UserInfoResponse> getUsersInfo(AdminUserQueryRequest request);
+
+    /**
+     * 管理员封禁用户账户
+     * @param request 封禁请求参数
+     * @param adminId 执行封禁的管理员ID
+     * @return 封禁结果信息
+     * @throws RuntimeException 如果用户不存在或已被封禁
+     */
+    String banUser(BanUserRequest request, Long adminId);
+
+    /**
+     * 管理员解封用户账户
+     * @param request 解封请求参数
+     * @return 解封结果信息
+     * @throws RuntimeException 如果用户不存在或未被封禁
+     */
+    String unbanUser(UnbanUserRequest request);
+
+    /**
+     * 检查用户是否被封禁
+     * @param userId 用户ID
+     * @return true表示用户被封禁，false表示用户正常
+     */
+    boolean isUserBanned(Long userId);
+
+    /**
+     * 获取用户封禁状态详情
+     * @param userId 用户ID
+     * @return 用户封禁状态信息
+     */
+    User getUserBanStatus(Long userId);
 }

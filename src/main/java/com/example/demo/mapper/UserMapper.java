@@ -185,4 +185,40 @@ public interface UserMapper {
                                  @Param("role") String role,
                                  @Param("createTimeStart") String createTimeStart,
                                  @Param("createTimeEnd") String createTimeEnd);
+
+    /**
+     * 封禁用户
+     * 将用户状态设置为BANNED，并记录封禁信息
+     */
+    @Update("UPDATE user SET status = 'BANNED', ban_reason = #{banReason}, ban_time = NOW(), ban_admin_id = #{banAdminId}, update_time = NOW() WHERE id = #{userId}")
+    int banUser(@Param("userId") Long userId, 
+                @Param("banReason") String banReason, 
+                @Param("banAdminId") Long banAdminId);
+
+    /**
+     * 解封用户
+     * 将用户状态设置为ACTIVE，并清除封禁信息
+     */
+    @Update("UPDATE user SET status = 'ACTIVE', ban_reason = NULL, ban_time = NULL, ban_admin_id = NULL, update_time = NOW() WHERE id = #{userId}")
+    int unbanUser(@Param("userId") Long userId);
+
+    /**
+     * 根据用户ID查询用户状态
+     * 用于检查用户是否被封禁
+     */
+    @Select("SELECT status, ban_reason, ban_time, ban_admin_id FROM user WHERE id = #{userId}")
+    @Results({
+        @Result(property = "status", column = "status"),
+        @Result(property = "banReason", column = "ban_reason"),
+        @Result(property = "banTime", column = "ban_time"),
+        @Result(property = "banAdminId", column = "ban_admin_id")
+    })
+    User getUserBanStatus(@Param("userId") Long userId);
+
+    /**
+     * 检查用户是否被封禁
+     * 返回true表示用户被封禁，false表示用户正常
+     */
+    @Select("SELECT COUNT(*) > 0 FROM user WHERE id = #{userId} AND status = 'BANNED'")
+    boolean isUserBanned(@Param("userId") Long userId);
 }

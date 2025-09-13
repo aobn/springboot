@@ -1,6 +1,8 @@
 package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
+import com.example.demo.dto.BanResponse;
+import com.example.demo.dto.LoginResult;
 import com.example.demo.dto.UserLoginRequest;
 import com.example.demo.dto.UserLoginResponse;
 import com.example.demo.dto.UserRegisterRequest;
@@ -112,7 +114,7 @@ public class AuthController {
      * @return 统一响应格式，包含登录成功的用户信息和JWT令牌
      */
     @PostMapping("/login")
-    public ApiResponse<UserLoginResponse> login(@RequestBody UserLoginRequest request) {
+    public ApiResponse<?> login(@RequestBody UserLoginRequest request) {
         log.info("收到用户登录请求: {}", request);
         
         // 参数校验
@@ -125,9 +127,10 @@ public class AuthController {
         }
         
         // 验证用户凭据
-        User user = userService.login(request.getEmail(), request.getPassword());
+        LoginResult loginResult = userService.login(request.getEmail(), request.getPassword());
         
-        if (user != null) {
+        if (loginResult.isSuccess()) {
+            User user = loginResult.getUser();
             // 生成JWT令牌，包含用户ID、邮箱和角色信息
             String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole());
             
@@ -136,9 +139,14 @@ public class AuthController {
             
             log.info("用户登录成功: {} (ID: {}, 角色: {})", user.getUsername(), user.getId(), user.getRole());
             return ApiResponse.success("登录成功", response);
+        } else if (loginResult.isBanned()) {
+            // 用户被封禁
+            log.warn("用户登录失败: 账户已被封禁 - {}, 封禁原因: {}", request.getEmail(), loginResult.getBanReason());
+            return ApiResponse.error(403, "账户已被封禁，无法登录", loginResult.getBanReason());
         } else {
+            // 其他登录失败情况
             log.warn("用户登录失败: {}", request.getEmail());
-            return ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), "邮箱或密码错误");
+            return ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), loginResult.getErrorMessage());
         }
     }
     

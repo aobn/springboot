@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.LoginResult;
 import com.example.demo.dto.UserChangePasswordRequest;
 import com.example.demo.dto.UserRegisterRequest;
 import com.example.demo.dto.UserRegisterVerifyRequest;
@@ -16,9 +17,9 @@ public interface UserService {
      * 用户登录
      * @param email 邮箱
      * @param password 密码
-     * @return 登录成功返回用户信息，失败返回null
+     * @return 登录结果，包含成功/失败状态、用户信息、封禁信息等
      */
-    User login(String email, String password);
+    LoginResult login(String email, String password);
     
     /**
      * 查询所有用户
