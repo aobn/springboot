@@ -73,4 +73,11 @@ public interface AdminService {
      * @return 分页域名列表
      */
     PageResponse<com.example.demo.dto.UserDomainInfo> getUserDomains(com.example.demo.dto.AdminUserDomainQueryRequest request);
+    
+    /**
+     * 管理员获取用户全部DNS记录列表（支持分页、按记录类型查询和模糊查询）
+     * @param request 查询请求参数
+     * @return 分页DNS记录列表
+     */
+    PageResponse<com.example.demo.dto.UserDnsRecordInfo> getUserDnsRecords(com.example.demo.dto.AdminDnsRecordQueryRequest request);
 }

@@ -170,4 +170,137 @@ public interface UserDnsRecordMapper {
      */
     @Select("SELECT COUNT(*) FROM user_dns_record WHERE user_id = #{userId} AND subdomain_id = #{subdomainId} AND name = #{name} AND type = #{type}")
     int existsByUserIdAndSubdomainIdAndNameAndType(Long userId, Long subdomainId, String name, String type);
+    
+    /**
+     * 管理员分页查询用户DNS记录列表（支持模糊搜索和多条件过滤）
+     * 
+     * @param offset 偏移量
+     * @param limit 限制数量
+     * @param keyword 搜索关键词
+     * @param userId 用户ID
+     * @param recordType 记录类型
+     * @param status 记录状态
+     * @param syncStatus 同步状态
+     * @param domain 主域名
+     * @param sortBy 排序字段
+     * @param sortDir 排序方向
+     * @return DNS记录列表
+     */
+    @Select("<script>" +
+            "SELECT " +
+            "    udr.id, udr.user_id, udr.subdomain_id, udr.record_id, udr.name, udr.type, udr.value, " +
+            "    udr.line, udr.line_id, udr.ttl, udr.mx, udr.weight, udr.status, udr.remark, " +
+            "    udr.monitor_status, udr.updated_on, udr.sync_status, udr.sync_error, " +
+            "    udr.create_time, udr.update_time, " +
+            "    u.username, u.email, " +
+            "    us.subdomain, us.domain, us.full_domain " +
+            "FROM user_dns_record udr " +
+            "LEFT JOIN user u ON udr.user_id = u.id " +
+            "LEFT JOIN user_subdomain us ON udr.subdomain_id = us.id " +
+            "WHERE 1=1 " +
+            "<if test='keyword != null and keyword != \"\"'>" +
+            "    AND (" +
+            "        u.username LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR u.email LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR us.subdomain LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR us.domain LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR us.full_domain LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR udr.name LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR udr.value LIKE CONCAT('%', #{keyword}, '%') " +
+            "    ) " +
+            "</if>" +
+            "<if test='userId != null'>" +
+            "    AND udr.user_id = #{userId} " +
+            "</if>" +
+            "<if test='recordType != null and recordType != \"\"'>" +
+            "    AND udr.type = #{recordType} " +
+            "</if>" +
+            "<if test='status != null and status != \"\"'>" +
+            "    AND udr.status = #{status} " +
+            "</if>" +
+            "<if test='syncStatus != null and syncStatus != \"\"'>" +
+            "    AND udr.sync_status = #{syncStatus} " +
+            "</if>" +
+            "<if test='domain != null and domain != \"\"'>" +
+            "    AND us.domain = #{domain} " +
+            "</if>" +
+            "ORDER BY " +
+            "<choose>" +
+            "    <when test='sortBy == \"update_time\"'>udr.update_time</when>" +
+            "    <when test='sortBy == \"name\"'>udr.name</when>" +
+            "    <when test='sortBy == \"type\"'>udr.type</when>" +
+            "    <when test='sortBy == \"status\"'>udr.status</when>" +
+            "    <otherwise>udr.create_time</otherwise>" +
+            "</choose> " +
+            "<choose>" +
+            "    <when test='sortDir == \"ASC\"'>ASC</when>" +
+            "    <otherwise>DESC</otherwise>" +
+            "</choose> " +
+            "LIMIT #{offset}, #{limit}" +
+            "</script>")
+    List<com.example.demo.dto.UserDnsRecordWithUser> selectUserDnsRecordsForAdmin(
+            @Param("offset") int offset,
+            @Param("limit") int limit,
+            @Param("keyword") String keyword,
+            @Param("userId") Long userId,
+            @Param("recordType") String recordType,
+            @Param("status") String status,
+            @Param("syncStatus") String syncStatus,
+            @Param("domain") String domain,
+            @Param("sortBy") String sortBy,
+            @Param("sortDir") String sortDir
+    );
+    
+    /**
+     * 管理员查询用户DNS记录总数（支持模糊搜索和多条件过滤）
+     * 
+     * @param keyword 搜索关键词
+     * @param userId 用户ID
+     * @param recordType 记录类型
+     * @param status 记录状态
+     * @param syncStatus 同步状态
+     * @param domain 主域名
+     * @return 总记录数
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) " +
+            "FROM user_dns_record udr " +
+            "LEFT JOIN user u ON udr.user_id = u.id " +
+            "LEFT JOIN user_subdomain us ON udr.subdomain_id = us.id " +
+            "WHERE 1=1 " +
+            "<if test='keyword != null and keyword != \"\"'>" +
+            "    AND (" +
+            "        u.username LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR u.email LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR us.subdomain LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR us.domain LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR us.full_domain LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR udr.name LIKE CONCAT('%', #{keyword}, '%') " +
+            "        OR udr.value LIKE CONCAT('%', #{keyword}, '%') " +
+            "    ) " +
+            "</if>" +
+            "<if test='userId != null'>" +
+            "    AND udr.user_id = #{userId} " +
+            "</if>" +
+            "<if test='recordType != null and recordType != \"\"'>" +
+            "    AND udr.type = #{recordType} " +
+            "</if>" +
+            "<if test='status != null and status != \"\"'>" +
+            "    AND udr.status = #{status} " +
+            "</if>" +
+            "<if test='syncStatus != null and syncStatus != \"\"'>" +
+            "    AND udr.sync_status = #{syncStatus} " +
+            "</if>" +
+            "<if test='domain != null and domain != \"\"'>" +
+            "    AND us.domain = #{domain} " +
+            "</if>" +
+            "</script>")
+    int countUserDnsRecordsForAdmin(
+            @Param("keyword") String keyword,
+            @Param("userId") Long userId,
+            @Param("recordType") String recordType,
+            @Param("status") String status,
+            @Param("syncStatus") String syncStatus,
+            @Param("domain") String domain
+    );
 }

@@ -11,12 +11,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.common.ApiResponse;
+import com.example.demo.dto.AdminDnsRecordQueryRequest;
 import com.example.demo.dto.AdminLoginRequest;
 import com.example.demo.dto.AdminRegisterRequest;
 import com.example.demo.dto.AdminUpdateRequest;
 import com.example.demo.dto.AdminUserDomainQueryRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UserDnsRecordInfo;
 import com.example.demo.dto.UserDomainInfo;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
@@ -123,7 +125,7 @@ public class AdminController {
      * @param id 管理员ID
      * @return 管理员信息
      */
-    @GetMapping("/{id}")
+    @GetMapping("/info/{id}")
     public ApiResponse<Admin> getAdminById(@PathVariable Long id) {
         log.info("获取管理员信息: {}", id);
         
@@ -145,7 +147,7 @@ public class AdminController {
      * @param request 更新请求
      * @return 更新后的管理员信息
      */
-    @PutMapping("/{id}")
+    @PutMapping("/info/{id}")
     public ApiResponse<Admin> updateAdmin(@PathVariable Long id, @RequestBody AdminUpdateRequest request) {
         log.info("更新管理员信息: {}", id);
         
@@ -266,6 +268,28 @@ public class AdminController {
             return ApiResponse.success(result);
         } catch (Exception e) {
             log.error("获取用户域名列表失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 管理员获取用户全部DNS记录列表（支持分页、按记录类型查询和模糊查询）
+     * @param request 查询请求参数
+     * @return 分页DNS记录列表
+     */
+    @PostMapping("/users/dns-records")
+    public ApiResponse<PageResponse<UserDnsRecordInfo>> getUserDnsRecords(@RequestBody AdminDnsRecordQueryRequest request) {
+        log.info("管理员获取用户DNS记录列表，页码: {}, 每页大小: {}, 关键词: {}, 记录类型: {}", 
+                request.getPage(), request.getSize(), request.getKeyword(), request.getRecordType());
+        
+        try {
+            // 获取用户DNS记录列表
+            PageResponse<UserDnsRecordInfo> result = adminService.getUserDnsRecords(request);
+            
+            log.info("获取用户DNS记录列表成功，总数: {}, 当前页: {} 条", result.getTotal(), result.getContent().size());
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("获取用户DNS记录列表失败: {}", e.getMessage());
             return ApiResponse.error(500, e.getMessage());
         }
     }

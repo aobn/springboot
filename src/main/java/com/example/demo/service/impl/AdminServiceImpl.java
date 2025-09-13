@@ -4,15 +4,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.dto.AdminDnsRecordQueryRequest;
 import com.example.demo.dto.AdminUserDomainQueryRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UserDnsRecordInfo;
+import com.example.demo.dto.UserDnsRecordWithUser;
 import com.example.demo.dto.UserDomainInfo;
 import com.example.demo.dto.UserSubdomainWithUser;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
 import com.example.demo.enums.UserRole;
 import com.example.demo.mapper.AdminMapper;
+import com.example.demo.mapper.UserDnsRecordMapper;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.mapper.UserSubdomainMapper;
 import com.example.demo.service.AdminService;
@@ -40,6 +44,9 @@ public class AdminServiceImpl implements AdminService {
     
     @Autowired
     private UserSubdomainMapper userSubdomainMapper;
+    
+    @Autowired
+    private UserDnsRecordMapper userDnsRecordMapper;
     
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -274,5 +281,77 @@ public class AdminServiceImpl implements AdminService {
         log.info("获取用户域名列表成功，共 {} 条记录，当前页 {} 条", total, domainInfos.size());
         
         return PageResponse.of(domainInfos, request.getPage(), request.getSize(), total);
+    }
+    
+    @Override
+    public PageResponse<UserDnsRecordInfo> getUserDnsRecords(AdminDnsRecordQueryRequest request) {
+        log.info("管理员查询用户DNS记录列表，参数: {}", request);
+        
+        // 验证并设置默认值
+        request.validate();
+        
+        // 计算偏移量
+        int offset = (request.getPage() - 1) * request.getSize();
+        
+        // 查询DNS记录列表
+        List<UserDnsRecordWithUser> dnsRecords = userDnsRecordMapper.selectUserDnsRecordsForAdmin(
+            offset,
+            request.getSize(),
+            request.getKeyword(),
+            request.getUserId(),
+            request.getRecordType(),
+            request.getStatus(),
+            request.getSyncStatus(),
+            request.getDomain(),
+            request.getSortBy(),
+            request.getSortDir()
+        );
+        
+        // 转换为DTO并设置用户信息
+        List<UserDnsRecordInfo> dnsRecordInfos = dnsRecords.stream()
+            .map(dnsRecord -> {
+                UserDnsRecordInfo info = new UserDnsRecordInfo();
+                info.setId(dnsRecord.getId());
+                info.setUserId(dnsRecord.getUserId());
+                info.setUsername(dnsRecord.getUsername());
+                info.setEmail(dnsRecord.getEmail());
+                info.setSubdomainId(dnsRecord.getSubdomainId());
+                info.setSubdomain(dnsRecord.getSubdomain());
+                info.setDomain(dnsRecord.getDomain());
+                info.setFullDomain(dnsRecord.getFullDomain());
+                info.setRecordId(dnsRecord.getRecordId());
+                info.setName(dnsRecord.getName());
+                info.setType(dnsRecord.getType());
+                info.setValue(dnsRecord.getValue());
+                info.setLine(dnsRecord.getLine());
+                info.setLineId(dnsRecord.getLineId());
+                info.setTtl(dnsRecord.getTtl());
+                info.setMx(dnsRecord.getMx());
+                info.setWeight(dnsRecord.getWeight());
+                info.setStatus(dnsRecord.getStatus());
+                info.setRemark(dnsRecord.getRemark());
+                info.setMonitorStatus(dnsRecord.getMonitorStatus());
+                info.setUpdatedOn(dnsRecord.getUpdatedOn());
+                info.setSyncStatus(dnsRecord.getSyncStatus());
+                info.setSyncError(dnsRecord.getSyncError());
+                info.setCreateTime(dnsRecord.getCreateTime());
+                info.setUpdateTime(dnsRecord.getUpdateTime());
+                return info;
+            })
+            .collect(java.util.stream.Collectors.toList());
+        
+        // 查询总数
+        int total = userDnsRecordMapper.countUserDnsRecordsForAdmin(
+            request.getKeyword(),
+            request.getUserId(),
+            request.getRecordType(),
+            request.getStatus(),
+            request.getSyncStatus(),
+            request.getDomain()
+        );
+        
+        log.info("获取用户DNS记录列表成功，共 {} 条记录，当前页 {} 条", total, dnsRecordInfos.size());
+        
+        return PageResponse.of(dnsRecordInfos, request.getPage(), request.getSize(), (long) total);
     }
 }
