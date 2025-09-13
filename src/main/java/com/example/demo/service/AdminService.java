@@ -1,7 +1,9 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.AdminUserQueryRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.dto.UserInfoResponse;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
 
@@ -80,4 +82,11 @@ public interface AdminService {
      * @return 分页DNS记录列表
      */
     PageResponse<com.example.demo.dto.UserDnsRecordInfo> getUserDnsRecords(com.example.demo.dto.AdminDnsRecordQueryRequest request);
+    
+    /**
+     * 管理员获取用户信息列表（支持分页和多条件查询）
+     * @param request 查询请求参数
+     * @return 分页用户信息列表
+     */
+    PageResponse<UserInfoResponse> getUsersInfo(AdminUserQueryRequest request);
 }

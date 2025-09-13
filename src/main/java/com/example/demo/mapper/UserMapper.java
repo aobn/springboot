@@ -1,6 +1,7 @@
 package com.example.demo.mapper;
 
 import com.example.demo.dto.UserDomainStats;
+import com.example.demo.dto.UserInfoResponse;
 import com.example.demo.entity.User;
 import org.apache.ibatis.annotations.*;
 
@@ -142,4 +143,46 @@ public interface UserMapper {
     @Select("SELECT COUNT(*) FROM user WHERE username LIKE CONCAT('%', #{keyword}, '%') " +
             "OR email LIKE CONCAT('%', #{keyword}, '%')")
     Long countSearchUsers(@Param("keyword") String keyword);
+    
+    /**
+     * 管理员查询用户信息（基础查询，不包含统计信息）
+     */
+    @Select("SELECT u.id, u.username, u.email, u.role, u.create_time, u.update_time, u.dom_num " +
+            "FROM user u " +
+            "WHERE (#{keyword} IS NULL OR #{keyword} = '' OR u.username LIKE CONCAT('%', #{keyword}, '%') OR u.email LIKE CONCAT('%', #{keyword}, '%')) " +
+            "AND (#{userId} IS NULL OR u.id = #{userId}) " +
+            "AND (#{role} IS NULL OR #{role} = '' OR u.role = #{role}) " +
+            "ORDER BY u.create_time DESC " +
+            "LIMIT #{offset}, #{size}")
+    @Results({
+        @Result(property = "id", column = "id"),
+        @Result(property = "username", column = "username"),
+        @Result(property = "email", column = "email"),
+        @Result(property = "role", column = "role"),
+        @Result(property = "createTime", column = "create_time"),
+        @Result(property = "updateTime", column = "update_time"),
+        @Result(property = "domNum", column = "dom_num")
+    })
+    List<UserInfoResponse> selectUsersWithConditions(@Param("userId") Long userId,
+                                                   @Param("keyword") String keyword,
+                                                   @Param("role") String role,
+                                                   @Param("createTimeStart") String createTimeStart,
+                                                   @Param("createTimeEnd") String createTimeEnd,
+                                                   @Param("offset") Integer offset,
+                                                   @Param("size") Integer size,
+                                                   @Param("sortBy") String sortBy,
+                                                   @Param("sortDir") String sortDir);
+    
+    /**
+     * 管理员查询用户信息总数
+     */
+    @Select("SELECT COUNT(*) FROM user u " +
+            "WHERE (#{keyword} IS NULL OR #{keyword} = '' OR u.username LIKE CONCAT('%', #{keyword}, '%') OR u.email LIKE CONCAT('%', #{keyword}, '%')) " +
+            "AND (#{userId} IS NULL OR u.id = #{userId}) " +
+            "AND (#{role} IS NULL OR #{role} = '' OR u.role = #{role})")
+    Long countUsersWithConditions(@Param("userId") Long userId,
+                                 @Param("keyword") String keyword,
+                                 @Param("role") String role,
+                                 @Param("createTimeStart") String createTimeStart,
+                                 @Param("createTimeEnd") String createTimeEnd);
 }

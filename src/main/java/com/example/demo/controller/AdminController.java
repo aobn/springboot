@@ -16,10 +16,12 @@ import com.example.demo.dto.AdminLoginRequest;
 import com.example.demo.dto.AdminRegisterRequest;
 import com.example.demo.dto.AdminUpdateRequest;
 import com.example.demo.dto.AdminUserDomainQueryRequest;
+import com.example.demo.dto.AdminUserQueryRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
 import com.example.demo.dto.UserDnsRecordInfo;
 import com.example.demo.dto.UserDomainInfo;
+import com.example.demo.dto.UserInfoResponse;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
 import com.example.demo.service.AdminService;
@@ -290,6 +292,28 @@ public class AdminController {
             return ApiResponse.success(result);
         } catch (Exception e) {
             log.error("获取用户DNS记录列表失败: {}", e.getMessage());
+            return ApiResponse.error(500, e.getMessage());
+        }
+    }
+    
+    /**
+     * 管理员获取用户信息列表（支持分页和多条件查询）
+     * @param request 查询请求参数
+     * @return 分页用户信息列表
+     */
+    @PostMapping("/users/info")
+    public ApiResponse<PageResponse<UserInfoResponse>> getUsersInfo(@RequestBody AdminUserQueryRequest request) {
+        log.info("管理员获取用户信息列表，页码: {}, 每页大小: {}, 关键词: {}, 用户ID: {}, 角色: {}", 
+                request.getPage(), request.getSize(), request.getKeyword(), request.getUserId(), request.getRole());
+        
+        try {
+            // 获取用户信息列表
+            PageResponse<UserInfoResponse> result = adminService.getUsersInfo(request);
+            
+            log.info("获取用户信息列表成功，总数: {}, 当前页: {} 条", result.getTotal(), result.getContent().size());
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("获取用户信息列表失败: {}", e.getMessage());
             return ApiResponse.error(500, e.getMessage());
         }
     }

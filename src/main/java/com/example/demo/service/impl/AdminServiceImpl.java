@@ -6,11 +6,13 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.dto.AdminDnsRecordQueryRequest;
 import com.example.demo.dto.AdminUserDomainQueryRequest;
+import com.example.demo.dto.AdminUserQueryRequest;
 import com.example.demo.dto.PageRequest;
 import com.example.demo.dto.PageResponse;
 import com.example.demo.dto.UserDnsRecordInfo;
 import com.example.demo.dto.UserDnsRecordWithUser;
 import com.example.demo.dto.UserDomainInfo;
+import com.example.demo.dto.UserInfoResponse;
 import com.example.demo.dto.UserSubdomainWithUser;
 import com.example.demo.entity.Admin;
 import com.example.demo.entity.User;
@@ -353,5 +355,50 @@ public class AdminServiceImpl implements AdminService {
         log.info("获取用户DNS记录列表成功，共 {} 条记录，当前页 {} 条", total, dnsRecordInfos.size());
         
         return PageResponse.of(dnsRecordInfos, request.getPage(), request.getSize(), (long) total);
+    }
+    
+    /**
+     * 管理员获取用户信息列表（支持分页和多条件查询）
+     * @param request 查询请求参数
+     * @return 分页用户信息列表
+     */
+    @Override
+    public PageResponse<UserInfoResponse> getUsersInfo(AdminUserQueryRequest request) {
+        log.info("管理员获取用户信息列表，页码: {}, 每页大小: {}, 关键词: {}, 用户ID: {}, 角色: {}", 
+                request.getPage(), request.getSize(), request.getKeyword(), request.getUserId(), request.getRole());
+        
+        // 验证并设置默认值
+        request.validate();
+        
+        try {
+            // 查询用户列表
+            List<UserInfoResponse> userInfos = userMapper.selectUsersWithConditions(
+                request.getUserId(),
+                request.getKeyword(),
+                request.getRole(),
+                request.getCreateTimeStart(),
+                request.getCreateTimeEnd(),
+                request.getOffset(),
+                request.getSize(),
+                request.getSortBy(),
+                request.getSortDir()
+            );
+            
+            // 查询总数
+            Long total = userMapper.countUsersWithConditions(
+                request.getUserId(),
+                request.getKeyword(),
+                request.getRole(),
+                request.getCreateTimeStart(),
+                request.getCreateTimeEnd()
+            );
+            
+            log.info("获取用户信息列表成功，共 {} 条记录，当前页 {} 条", total, userInfos.size());
+            
+            return PageResponse.of(userInfos, request.getPage(), request.getSize(), total);
+        } catch (Exception e) {
+            log.error("获取用户信息列表失败: {}", e.getMessage(), e);
+            throw new RuntimeException("获取用户信息列表失败: " + e.getMessage());
+        }
     }
 }
