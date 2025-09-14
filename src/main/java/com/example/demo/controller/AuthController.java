@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.BanResponse;
 import com.example.demo.dto.LoginResult;
+import com.example.demo.dto.UserForgotPasswordRequest;
 import com.example.demo.dto.UserLoginRequest;
 import com.example.demo.dto.UserLoginResponse;
 import com.example.demo.dto.UserRegisterRequest;
@@ -224,6 +225,58 @@ public class AuthController {
         } catch (Exception e) {
             log.error("验证令牌过程中发生错误", e);
             return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "验证令牌失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 用户忘记密码修改密码
+     * @param request 包含邮箱、验证码、新密码和确认密码的请求
+     * @return 统一响应格式
+     */
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@RequestBody UserForgotPasswordRequest request) {
+        log.info("收到用户忘记密码修改密码请求: email={}", request.getEmail());
+        
+        // 参数校验
+        if (request.getEmail() == null || request.getEmail().isEmpty()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "邮箱不能为空");
+        }
+        
+        if (request.getVerificationCode() == null || request.getVerificationCode().isEmpty()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "验证码不能为空");
+        }
+        
+        if (request.getNewPassword() == null || request.getNewPassword().isEmpty()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "新密码不能为空");
+        }
+        
+        if (request.getConfirmPassword() == null || request.getConfirmPassword().isEmpty()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "确认密码不能为空");
+        }
+        
+        // 检查密码强度
+        if (request.getNewPassword().length() < 8) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "密码长度不能少于8位");
+        }
+        
+        // 检查新密码和确认密码是否一致
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "新密码和确认密码不一致");
+        }
+        
+        try {
+            // 执行忘记密码修改
+            boolean success = userService.forgotPassword(request);
+            
+            if (success) {
+                log.info("用户忘记密码修改成功: email={}", request.getEmail());
+                return ApiResponse.success("密码修改成功", null);
+            } else {
+                return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "密码修改失败，请稍后重试");
+            }
+        } catch (Exception e) {
+            log.error("用户忘记密码修改过程中发生错误: email={}", request.getEmail(), e);
+            return ApiResponse.error(HttpStatus.BAD_REQUEST.value(), e.getMessage());
         }
     }
 }

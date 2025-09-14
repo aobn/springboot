@@ -3,6 +3,7 @@ package com.example.demo.service.impl;
 import com.example.demo.common.BusinessException;
 import com.example.demo.dto.LoginResult;
 import com.example.demo.dto.UserChangePasswordRequest;
+import com.example.demo.dto.UserForgotPasswordRequest;
 import com.example.demo.dto.UserRegisterRequest;
 import com.example.demo.dto.UserRegisterVerifyRequest;
 import com.example.demo.entity.User;
@@ -199,6 +200,58 @@ public class UserServiceImpl implements UserService {
             log.info("用户密码修改成功: userId={}", userId);
         } else {
             log.error("用户密码修改失败: userId={}", userId);
+            throw new BusinessException("密码修改失败，请稍后重试");
+        }
+    }
+    
+    @Override
+    @Transactional
+    public boolean forgotPassword(UserForgotPasswordRequest request) {
+        log.info("用户忘记密码修改密码: email={}", request.getEmail());
+        
+        // 验证新密码和确认密码是否一致
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            log.warn("新密码和确认密码不一致: email={}", request.getEmail());
+            throw new BusinessException("新密码和确认密码不一致");
+        }
+        
+        // 验证邮箱验证码
+        boolean isCodeValid = verificationCodeService.verifyCode(request.getEmail(), request.getVerificationCode());
+        if (!isCodeValid) {
+            log.warn("验证码验证失败: email={}", request.getEmail());
+            throw new BusinessException("验证码无效或已过期");
+        }
+        
+        // 查询用户信息
+        User user = userMapper.findByEmail(request.getEmail());
+        if (user == null) {
+            log.warn("用户不存在: email={}", request.getEmail());
+            throw new BusinessException("该邮箱未注册");
+        }
+        
+        // 检查用户是否被封禁
+        if ("BANNED".equals(user.getStatus())) {
+            log.warn("用户已被封禁，无法修改密码: email={}", request.getEmail());
+            throw new BusinessException("账户已被封禁，无法修改密码");
+        }
+        
+        // 检查新密码是否与原密码相同
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            log.warn("新密码不能与原密码相同: email={}", request.getEmail());
+            throw new BusinessException("新密码不能与当前密码相同");
+        }
+        
+        // 更新密码
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        int updateResult = userMapper.update(user);
+        
+        if (updateResult > 0) {
+            // 标记验证码为已使用
+            verificationCodeService.markCodeAsUsed(request.getEmail(), request.getVerificationCode());
+            log.info("用户忘记密码修改成功: email={}", request.getEmail());
+            return true;
+        } else {
+            log.error("用户忘记密码修改失败: email={}", request.getEmail());
             throw new BusinessException("密码修改失败，请稍后重试");
         }
     }

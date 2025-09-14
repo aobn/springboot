@@ -1,13 +1,11 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.entity.VerificationCode;
+import com.example.demo.service.ExternalMailService;
 import com.example.demo.service.VerificationCodeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -37,10 +35,7 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
     private final Map<String, VerificationCode> codeMap = new HashMap<>();
     
     @Autowired
-    private JavaMailSender mailSender;
-    
-    @Value("${spring.mail.username}")
-    private String fromEmail;
+    private ExternalMailService externalMailService;
     
     /**
      * 生成并发送验证码到指定邮箱
@@ -63,7 +58,11 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
         codeMap.put(email, verificationCode);
         
         // 发送验证码邮件
-        sendVerificationEmail(email, code);
+        boolean sendResult = externalMailService.sendVerificationCode(email, code);
+        if (!sendResult) {
+            logger.error("验证码邮件发送失败: {}", email);
+            throw new RuntimeException("验证码邮件发送失败");
+        }
         
         logger.info("验证码已生成并发送至邮箱: {}, 验证码: {}", email, code);
         
@@ -131,24 +130,5 @@ public class VerificationCodeServiceImpl implements VerificationCodeService {
         return sb.toString();
     }
     
-    /**
-     * 发送验证码邮件
-     * @param toEmail 接收邮箱
-     * @param code 验证码
-     */
-    private void sendVerificationEmail(String toEmail, String code) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(toEmail);
-            message.setSubject("您的验证码");
-            message.setText("您好，您的验证码是: " + code + "，有效期" + EXPIRE_MINUTES + "分钟，请勿泄露给他人。");
-            
-            mailSender.send(message);
-            logger.info("验证码邮件已发送至: {}", toEmail);
-        } catch (Exception e) {
-            logger.error("发送验证码邮件失败: {}", e.getMessage(), e);
-            throw new RuntimeException("发送验证码邮件失败", e);
-        }
-    }
+
 }

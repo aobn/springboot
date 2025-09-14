@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.LoginResult;
 import com.example.demo.dto.UserChangePasswordRequest;
+import com.example.demo.dto.UserForgotPasswordRequest;
 import com.example.demo.dto.UserRegisterRequest;
 import com.example.demo.dto.UserRegisterVerifyRequest;
 import com.example.demo.entity.User;
@@ -74,4 +75,11 @@ public interface UserService {
      * @return 是否修改成功
      */
     void changePassword(Long userId, UserChangePasswordRequest request);
+    
+    /**
+     * 用户忘记密码修改密码
+     * @param request 忘记密码请求，包含邮箱、验证码、新密码和确认密码
+     * @return 是否修改成功
+     */
+    boolean forgotPassword(UserForgotPasswordRequest request);
 }
