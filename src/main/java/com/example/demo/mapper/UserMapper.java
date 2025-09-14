@@ -145,13 +145,15 @@ public interface UserMapper {
     Long countSearchUsers(@Param("keyword") String keyword);
     
     /**
-     * 管理员查询用户信息（基础查询，不包含统计信息）
+     * 管理员查询用户信息（包含封禁信息）
      */
-    @Select("SELECT u.id, u.username, u.email, u.role, u.create_time, u.update_time, u.dom_num " +
+    @Select("SELECT u.id, u.username, u.email, u.role, u.create_time, u.update_time, u.dom_num, " +
+            "u.status, u.ban_reason, u.ban_time, u.ban_admin_id " +
             "FROM user u " +
             "WHERE (#{keyword} IS NULL OR #{keyword} = '' OR u.username LIKE CONCAT('%', #{keyword}, '%') OR u.email LIKE CONCAT('%', #{keyword}, '%')) " +
             "AND (#{userId} IS NULL OR u.id = #{userId}) " +
             "AND (#{role} IS NULL OR #{role} = '' OR u.role = #{role}) " +
+            "AND (#{status} IS NULL OR #{status} = '' OR u.status = #{status}) " +
             "ORDER BY u.create_time DESC " +
             "LIMIT #{offset}, #{size}")
     @Results({
@@ -161,11 +163,16 @@ public interface UserMapper {
         @Result(property = "role", column = "role"),
         @Result(property = "createTime", column = "create_time"),
         @Result(property = "updateTime", column = "update_time"),
-        @Result(property = "domNum", column = "dom_num")
+        @Result(property = "domNum", column = "dom_num"),
+        @Result(property = "status", column = "status"),
+        @Result(property = "banReason", column = "ban_reason"),
+        @Result(property = "banTime", column = "ban_time"),
+        @Result(property = "banAdminId", column = "ban_admin_id")
     })
     List<UserInfoResponse> selectUsersWithConditions(@Param("userId") Long userId,
                                                    @Param("keyword") String keyword,
                                                    @Param("role") String role,
+                                                   @Param("status") String status,
                                                    @Param("createTimeStart") String createTimeStart,
                                                    @Param("createTimeEnd") String createTimeEnd,
                                                    @Param("offset") Integer offset,
@@ -179,10 +186,12 @@ public interface UserMapper {
     @Select("SELECT COUNT(*) FROM user u " +
             "WHERE (#{keyword} IS NULL OR #{keyword} = '' OR u.username LIKE CONCAT('%', #{keyword}, '%') OR u.email LIKE CONCAT('%', #{keyword}, '%')) " +
             "AND (#{userId} IS NULL OR u.id = #{userId}) " +
-            "AND (#{role} IS NULL OR #{role} = '' OR u.role = #{role})")
+            "AND (#{role} IS NULL OR #{role} = '' OR u.role = #{role}) " +
+            "AND (#{status} IS NULL OR #{status} = '' OR u.status = #{status})")
     Long countUsersWithConditions(@Param("userId") Long userId,
                                  @Param("keyword") String keyword,
                                  @Param("role") String role,
+                                 @Param("status") String status,
                                  @Param("createTimeStart") String createTimeStart,
                                  @Param("createTimeEnd") String createTimeEnd);
 

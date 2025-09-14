@@ -48,6 +48,11 @@ public class AdminUserQueryRequest {
     private String role;
     
     /**
+     * 账户状态过滤，ACTIVE或BANNED
+     */
+    private String status;
+    
+    /**
      * 创建时间范围查询 - 开始时间
      */
     private String createTimeStart;
@@ -111,6 +116,14 @@ public class AdminUserQueryRequest {
             role = role.trim().toUpperCase();
             if (!role.equals("USER") && !role.equals("ADMIN")) {
                 role = null;
+            }
+        }
+        
+        // 状态验证
+        if (status != null) {
+            status = status.trim().toUpperCase();
+            if (!status.equals("ACTIVE") && !status.equals("BANNED")) {
+                status = null;
             }
         }
     }

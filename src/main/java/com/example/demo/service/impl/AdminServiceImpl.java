@@ -366,8 +366,8 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public PageResponse<UserInfoResponse> getUsersInfo(AdminUserQueryRequest request) {
-        log.info("管理员获取用户信息列表，页码: {}, 每页大小: {}, 关键词: {}, 用户ID: {}, 角色: {}", 
-                request.getPage(), request.getSize(), request.getKeyword(), request.getUserId(), request.getRole());
+        log.info("管理员获取用户信息列表，页码: {}, 每页大小: {}, 关键词: {}, 用户ID: {}, 角色: {}, 状态: {}", 
+                request.getPage(), request.getSize(), request.getKeyword(), request.getUserId(), request.getRole(), request.getStatus());
         
         // 验证并设置默认值
         request.validate();
@@ -378,6 +378,7 @@ public class AdminServiceImpl implements AdminService {
                 request.getUserId(),
                 request.getKeyword(),
                 request.getRole(),
+                request.getStatus(),
                 request.getCreateTimeStart(),
                 request.getCreateTimeEnd(),
                 request.getOffset(),
@@ -391,6 +392,7 @@ public class AdminServiceImpl implements AdminService {
                 request.getUserId(),
                 request.getKeyword(),
                 request.getRole(),
+                request.getStatus(),
                 request.getCreateTimeStart(),
                 request.getCreateTimeEnd()
             );

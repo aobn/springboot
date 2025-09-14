@@ -64,7 +64,22 @@ public class UserInfoResponse {
     private LocalDateTime lastLoginTime;
     
     /**
-     * 账户状态（如果有相关字段）
+     * 账户状态（ACTIVE-正常，BANNED-永久封禁）
      */
     private String status;
+    
+    /**
+     * 封禁原因
+     */
+    private String banReason;
+    
+    /**
+     * 封禁时间
+     */
+    private LocalDateTime banTime;
+    
+    /**
+     * 执行封禁的管理员ID
+     */
+    private Long banAdminId;
 }
