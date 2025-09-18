@@ -17,33 +17,33 @@ print_red() {
 print_green "===== Spring Boot 应用启动脚本 ====="
 print_yellow "$(date '+%Y-%m-%d %H:%M:%S') 开始执行..."
 
-# 检查并杀掉占用8080端口的进程
-print_yellow "正在检查8080端口占用情况..."
+# 检查并杀掉占用8001端口的进程
+print_yellow "正在检查8001端口占用情况..."
 
-# 使用lsof命令查找占用8080端口的进程
+# 使用lsof命令查找占用8001端口的进程
 if command -v lsof > /dev/null 2>&1; then
-    PORT_PID=$(lsof -i:8080 -sTCP:LISTEN -t)
+    PORT_PID=$(lsof -i:8001 -sTCP:LISTEN -t)
     if [ -n "$PORT_PID" ]; then
-        print_red "发现占用8080端口的进程: $PORT_PID，正在终止..."
+        print_red "发现占用8001端口的进程: $PORT_PID，正在终止..."
         kill -9 $PORT_PID
         print_green "进程已终止"
     else
-        print_green "8080端口未被占用"
+        print_green "8001端口未被占用"
     fi
 # 如果没有lsof命令，尝试使用fuser命令
 elif command -v fuser > /dev/null 2>&1; then
     print_yellow "使用fuser检查端口..."
-    fuser -k 8080/tcp 2>/dev/null || print_green "8080端口未被占用"
+    fuser -k 8001/tcp 2>/dev/null || print_green "8001端口未被占用"
 # 如果两个命令都不可用，则使用netstat
 elif command -v netstat > /dev/null 2>&1; then
     print_yellow "使用netstat检查端口..."
-    PORT_PID=$(netstat -tulpn 2>/dev/null | grep ":8080" | awk '{print $7}' | cut -d'/' -f1)
+    PORT_PID=$(netstat -tulpn 2>/dev/null | grep ":8001" | awk '{print $7}' | cut -d'/' -f1)
     if [ -n "$PORT_PID" ] && [ "$PORT_PID" != "" ]; then
-        print_red "发现占用8080端口的进程: $PORT_PID，正在终止..."
+        print_red "发现占用8001端口的进程: $PORT_PID，正在终止..."
         kill -9 $PORT_PID
         print_green "进程已终止"
     else
-        print_green "8080端口未被占用"
+        print_green "8001端口未被占用"
     fi
 else
     print_red "警告: 无法检查端口占用，lsof、fuser和netstat命令均不可用"

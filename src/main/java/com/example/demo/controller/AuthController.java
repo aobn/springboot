@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
-import com.example.demo.dto.BanResponse;
 import com.example.demo.dto.LoginResult;
 import com.example.demo.dto.UserForgotPasswordRequest;
 import com.example.demo.dto.UserLoginRequest;

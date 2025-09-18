@@ -54,6 +54,19 @@ public class DnspodServiceImpl implements DnspodService {
     public DescribeDomainListResponse getDomainList(String type, Integer offset, Integer limit, 
                                                    Integer groupId, String keyword) {
         try {
+            // 调试信息：检查配置是否正确加载
+            System.out.println("=== DNSPod API 配置检查 ===");
+            System.out.println("SecretId: " + (secretId != null ? secretId.substring(0, Math.min(10, secretId.length())) + "..." : "null"));
+            System.out.println("SecretKey: " + (secretKey != null ? secretKey.substring(0, Math.min(10, secretKey.length())) + "..." : "null"));
+            System.out.println("Region: " + region);
+            
+            if (secretId == null || secretId.trim().isEmpty()) {
+                throw new RuntimeException("SecretId 配置为空，请检查 application.properties 中的 tencent.cloud.secret-id 配置");
+            }
+            if (secretKey == null || secretKey.trim().isEmpty()) {
+                throw new RuntimeException("SecretKey 配置为空，请检查 application.properties 中的 tencent.cloud.secret-key 配置");
+            }
+            
             // 实例化一个认证对象，入参需要传入腾讯云账户 SecretId 和 SecretKey
             Credential cred = new Credential(secretId, secretKey);
             
@@ -271,6 +284,19 @@ public class DnspodServiceImpl implements DnspodService {
                                            String value, String subDomain, Long ttl, Long mx, 
                                            Long weight, String status, String remark) {
         try {
+            // 调试信息：检查配置是否正确加载
+            System.out.println("=== CreateRecord DNSPod API 配置检查 ===");
+            System.out.println("SecretId: " + (secretId != null ? secretId.substring(0, Math.min(10, secretId.length())) + "..." : "null"));
+            System.out.println("SecretKey: " + (secretKey != null ? secretKey.substring(0, Math.min(10, secretKey.length())) + "..." : "null"));
+            System.out.println("Region: " + region);
+            
+            if (secretId == null || secretId.trim().isEmpty()) {
+                throw new RuntimeException("SecretId 配置为空，请检查 application.properties 中的 tencent.cloud.secret-id 配置");
+            }
+            if (secretKey == null || secretKey.trim().isEmpty()) {
+                throw new RuntimeException("SecretKey 配置为空，请检查 application.properties 中的 tencent.cloud.secret-key 配置");
+            }
+            
             // 实例化一个认证对象，入参需要传入腾讯云账户 SecretId 和 SecretKey
             Credential cred = new Credential(secretId, secretKey);
             

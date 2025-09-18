@@ -27,8 +27,8 @@ public class UserDnsRecordRequest {
      */
     @NotBlank(message = "主机记录不能为空")
     @Size(max = 100, message = "主机记录长度不能超过100个字符")
-    @Pattern(regexp = "^(@|[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)$", 
-             message = "主机记录格式不正确，只能包含字母、数字、连字符，或使用@表示主域名")
+    @Pattern(regexp = "^(@|_[a-zA-Z0-9][a-zA-Z0-9\\-]{0,62}(\\._[a-zA-Z0-9][a-zA-Z0-9\\-]{0,62})?|[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)$", 
+             message = "主机记录格式不正确，支持@表示主域名、下划线开头的特殊记录（如_acme-challenge、_sip._tcp）、或字母数字连字符组合")
     private String name;
     
     /**

@@ -42,6 +42,10 @@ public class DnsRecordValidator {
                 return validateDomain(value);
             case "TXT":
                 return validateTXT(value);
+            case "SRV":
+                return validateSRV(value);
+            case "PTR":
+                return validateDomain(value);
             default:
                 return ValidationResult.success();
         }
@@ -221,8 +225,73 @@ public class DnsRecordValidator {
             return ValidationResult.error("TXT记录值不能为空");
         }
         
-        if (txt.length() > 255) {
-            return ValidationResult.error("TXT记录值长度不能超过255个字符，当前长度：" + txt.length());
+        if (txt.length() > 600) {
+            return ValidationResult.error("TXT记录值长度不能超过600个字符，当前长度：" + txt.length());
+        }
+        
+        return ValidationResult.success();
+    }
+    
+    /**
+     * 验证SRV记录格式
+     * SRV记录格式：优先级 权重 端口 目标主机
+     * 例如：10 5 443 target.example.com.
+     * 
+     * @param srv SRV记录值
+     * @return 校验结果
+     */
+    public static ValidationResult validateSRV(String srv) {
+        if (srv == null || srv.trim().isEmpty()) {
+            return ValidationResult.error("SRV记录值不能为空");
+        }
+        
+        srv = srv.trim();
+        
+        // 分割SRV记录的各个部分
+        String[] parts = srv.split("\\s+");
+        
+        if (parts.length != 4) {
+            return ValidationResult.error("SRV记录格式不正确。正确格式：优先级 权重 端口 目标主机，例如：10 5 443 target.example.com，当前值：" + srv);
+        }
+        
+        // 验证优先级（0-65535）
+        try {
+            int priority = Integer.parseInt(parts[0]);
+            if (priority < 0 || priority > 65535) {
+                return ValidationResult.error("SRV记录优先级必须在0-65535范围内，当前值：" + parts[0]);
+            }
+        } catch (NumberFormatException e) {
+            return ValidationResult.error("SRV记录优先级必须是数字，当前值：" + parts[0]);
+        }
+        
+        // 验证权重（0-65535）
+        try {
+            int weight = Integer.parseInt(parts[1]);
+            if (weight < 0 || weight > 65535) {
+                return ValidationResult.error("SRV记录权重必须在0-65535范围内，当前值：" + parts[1]);
+            }
+        } catch (NumberFormatException e) {
+            return ValidationResult.error("SRV记录权重必须是数字，当前值：" + parts[1]);
+        }
+        
+        // 验证端口（1-65535）
+        try {
+            int port = Integer.parseInt(parts[2]);
+            if (port < 1 || port > 65535) {
+                return ValidationResult.error("SRV记录端口必须在1-65535范围内，当前值：" + parts[2]);
+            }
+        } catch (NumberFormatException e) {
+            return ValidationResult.error("SRV记录端口必须是数字，当前值：" + parts[2]);
+        }
+        
+        // 验证目标主机（域名格式或"."）
+        String target = parts[3];
+        if (!target.equals(".")) {
+            // 如果不是"."，则验证域名格式
+            ValidationResult domainResult = validateDomain(target);
+            if (!domainResult.isValid()) {
+                return ValidationResult.error("SRV记录目标主机格式不正确：" + domainResult.getErrorMessage());
+            }
         }
         
         return ValidationResult.success();
