@@ -23,10 +23,18 @@ public class UserDnsRecordServiceImpl implements UserDnsRecordService {
     
     @Override
     public UserDnsRecord createRecord(UserDnsRecord record) {
-        // 检查记录是否已存在
-        if (userDnsRecordMapper.existsByUserIdAndSubdomainIdAndNameAndType(
+        // 对于非NS记录，检查记录是否已存在
+        if (!"NS".equals(record.getType()) && 
+            userDnsRecordMapper.existsByUserIdAndSubdomainIdAndNameAndType(
                 record.getUserId(), record.getSubdomainId(), record.getName(), record.getType()) > 0) {
             throw new RuntimeException("DNS解析记录已存在");
+        }
+        
+        // 对于NS记录，检查是否已存在相同的记录值
+        if ("NS".equals(record.getType()) && 
+            userDnsRecordMapper.existsByUserIdAndSubdomainIdAndNameAndTypeAndValue(
+                record.getUserId(), record.getSubdomainId(), record.getName(), record.getType(), record.getValue()) > 0) {
+            throw new RuntimeException("相同的NS解析记录已存在");
         }
         
         userDnsRecordMapper.insert(record);
@@ -107,6 +115,11 @@ public class UserDnsRecordServiceImpl implements UserDnsRecordService {
     @Override
     public boolean existsRecord(Long userId, Long subdomainId, String name, String type) {
         return userDnsRecordMapper.existsByUserIdAndSubdomainIdAndNameAndType(userId, subdomainId, name, type) > 0;
+    }
+    
+    @Override
+    public boolean existsRecordWithValue(Long userId, Long subdomainId, String name, String type, String value) {
+        return userDnsRecordMapper.existsByUserIdAndSubdomainIdAndNameAndTypeAndValue(userId, subdomainId, name, type, value) > 0;
     }
     
     @Override

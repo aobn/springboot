@@ -172,6 +172,19 @@ public interface UserDnsRecordMapper {
     int existsByUserIdAndSubdomainIdAndNameAndType(Long userId, Long subdomainId, String name, String type);
     
     /**
+     * 检查记录是否存在（用户ID + 子域名ID + 主机记录 + 记录类型 + 记录值）
+     * 
+     * @param userId 用户ID
+     * @param subdomainId 子域名ID
+     * @param name 主机记录
+     * @param type 记录类型
+     * @param value 记录值
+     * @return 记录数量
+     */
+    @Select("SELECT COUNT(*) FROM user_dns_record WHERE user_id = #{userId} AND subdomain_id = #{subdomainId} AND name = #{name} AND type = #{type} AND value = #{value}")
+    int existsByUserIdAndSubdomainIdAndNameAndTypeAndValue(Long userId, Long subdomainId, String name, String type, String value);
+    
+    /**
      * 管理员分页查询用户DNS记录列表（支持模糊搜索和多条件过滤）
      * 
      * @param offset 偏移量

@@ -85,10 +85,18 @@ public class UserDnsRecordController {
                 return ApiResponse.error(400, "子域名状态异常，无法添加解析记录");
             }
             
-            // 2. 检查记录是否已存在
-            if (userDnsRecordService.existsRecord(userId, request.getSubdomainId(), 
+            // 2. 检查记录是否已存在（NS记录允许多条同名记录）
+            if (!"NS".equals(request.getType()) && 
+                userDnsRecordService.existsRecord(userId, request.getSubdomainId(), 
                     request.getName(), request.getType())) {
                 return ApiResponse.error(409, "DNS解析记录已存在");
+            }
+            
+            // 对于NS记录，检查是否已存在相同的记录值
+            if ("NS".equals(request.getType()) && 
+                userDnsRecordService.existsRecordWithValue(userId, request.getSubdomainId(), 
+                    request.getName(), request.getType(), request.getValue())) {
+                return ApiResponse.error(409, "相同的NS解析记录已存在");
             }
             
             // 3. 验证记录类型和值的格式（使用新的校验工具类）

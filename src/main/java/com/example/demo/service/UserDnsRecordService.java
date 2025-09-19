@@ -149,6 +149,18 @@ public interface UserDnsRecordService {
     boolean existsRecord(Long userId, Long subdomainId, String name, String type);
     
     /**
+     * 检查记录是否存在（包含记录值）
+     * 
+     * @param userId 用户ID
+     * @param subdomainId 子域名ID
+     * @param name 主机记录
+     * @param type 记录类型
+     * @param value 记录值
+     * @return 是否存在
+     */
+    boolean existsRecordWithValue(Long userId, Long subdomainId, String name, String type, String value);
+    
+    /**
      * 同步DNS解析记录到DNSPod
      * 
      * @param recordId 记录ID
