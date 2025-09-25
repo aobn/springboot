@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.CloudflareDnsRecordResponse;
+import com.example.demo.dto.CreateDnsRecordRequest;
+import com.example.demo.dto.CreateDnsRecordResponse;
 import com.example.demo.entity.CloudflareDnsRecord;
 
 import java.util.List;
@@ -85,10 +87,26 @@ public interface CloudflareDnsRecordService {
     int countDnsRecordsByZoneId(String zoneId);
     
     /**
+     * 创建DNS记录到Cloudflare并同步到本地数据库
+     * @param zoneId Zone ID
+     * @param request 创建DNS记录请求
+     * @return 创建的DNS记录实体
+     */
+    CloudflareDnsRecord createDnsRecord(String zoneId, CreateDnsRecordRequest request);
+    
+    /**
      * 将Cloudflare API响应转换为本地实体
      * @param apiRecord API响应中的DNS记录
      * @param zoneId Zone ID
      * @return 本地DNS记录实体
      */
     CloudflareDnsRecord convertToEntity(CloudflareDnsRecordResponse.DnsRecord apiRecord, String zoneId);
+    
+    /**
+     * 将创建DNS记录响应转换为本地实体
+     * @param createResponse 创建DNS记录响应
+     * @param zoneId Zone ID
+     * @return 本地DNS记录实体
+     */
+    CloudflareDnsRecord convertCreateResponseToEntity(CreateDnsRecordResponse createResponse, String zoneId);
 }

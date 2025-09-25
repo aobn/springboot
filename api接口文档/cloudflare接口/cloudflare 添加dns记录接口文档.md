@@ -11,7 +11,9 @@ curl https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records \
           "content": "test.com"
  }'
 
-其中，$ZONE_ID 等于
+其中，$ZONE_ID = cloudflare_zone表中的zone_id字段，
+请求体中name的值=cloudflare_zone表中的name字段(如：f.f.a.2.8.f.0.7.4.0.1.0.0.2.ip6.arpa)拼接用户输入的值(如：f.f)
+
 
 
 ## 添加ns记录真实响应示例：

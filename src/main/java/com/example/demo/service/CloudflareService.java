@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.dto.CloudflareZoneResponse;
 import com.example.demo.dto.CloudflareDnsRecordResponse;
+import com.example.demo.dto.CreateDnsRecordRequest;
+import com.example.demo.dto.CreateDnsRecordResponse;
 import java.util.List;
 
 /**
@@ -38,6 +40,16 @@ public interface CloudflareService {
      * @throws Exception 调用API异常
      */
     CloudflareDnsRecordResponse getDnsRecords(String zoneId) throws Exception;
+    
+    /**
+     * 创建DNS记录
+     * 
+     * @param zoneId Zone ID
+     * @param request 创建DNS记录请求
+     * @return 创建结果
+     * @throws Exception 调用API异常
+     */
+    CreateDnsRecordResponse createDnsRecord(String zoneId, CreateDnsRecordRequest request) throws Exception;
     
     /**
      * 测试Cloudflare API连接

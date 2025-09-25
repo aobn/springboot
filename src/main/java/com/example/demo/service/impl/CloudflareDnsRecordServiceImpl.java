@@ -1,6 +1,8 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.CloudflareDnsRecordResponse;
+import com.example.demo.dto.CreateDnsRecordRequest;
+import com.example.demo.dto.CreateDnsRecordResponse;
 import com.example.demo.entity.CloudflareDnsRecord;
 import com.example.demo.entity.CloudflareZone;
 import com.example.demo.mapper.CloudflareDnsRecordMapper;
@@ -242,6 +244,148 @@ public class CloudflareDnsRecordServiceImpl implements CloudflareDnsRecordServic
             log.error("统计Zone {} 的DNS记录数量失败", zoneId, e);
             throw new RuntimeException("统计DNS记录数量失败: " + e.getMessage(), e);
         }
+    }
+    
+    @Override
+    @Transactional
+    public CloudflareDnsRecord createDnsRecord(String zoneId, CreateDnsRecordRequest request) {
+        try {
+            log.info("=== 开始创建DNS记录到Cloudflare ===");
+            log.info("Zone ID: {}, 记录名称前缀: {}, 类型: {}, 内容: {}", 
+                    zoneId, request.getNamePrefix(), request.getType(), request.getContent());
+            
+            // 步骤1：验证请求参数
+            validateCreateDnsRecordRequest(request);
+            
+            // 步骤2：调用Cloudflare API创建DNS记录
+            log.info("步骤1：调用Cloudflare API创建DNS记录");
+            CreateDnsRecordResponse createResponse = cloudflareService.createDnsRecord(zoneId, request);
+            
+            if (createResponse == null || !createResponse.isSuccess()) {
+                String errorMsg = "Cloudflare API创建DNS记录失败";
+                if (createResponse != null && createResponse.getErrors() != null && !createResponse.getErrors().isEmpty()) {
+                    errorMsg += ": " + createResponse.getErrors().get(0).getMessage();
+                }
+                log.error(errorMsg);
+                throw new RuntimeException(errorMsg);
+            }
+            
+            // 步骤3：转换为本地实体并保存到数据库
+            log.info("步骤2：转换API响应为本地实体并保存到数据库");
+            CloudflareDnsRecord localRecord = convertCreateResponseToEntity(createResponse, zoneId);
+            
+            // 步骤4：保存到本地数据库
+            boolean saveSuccess = saveOrUpdateDnsRecord(localRecord);
+            if (!saveSuccess) {
+                log.error("保存DNS记录到本地数据库失败");
+                throw new RuntimeException("保存DNS记录到本地数据库失败");
+            }
+            
+            log.info("=== DNS记录创建完成 ===");
+            log.info("Cloudflare记录ID: {}, 本地记录ID: {}, 记录名称: {}", 
+                    localRecord.getRecordId(), localRecord.getId(), localRecord.getName());
+            
+            return localRecord;
+            
+        } catch (Exception e) {
+            log.error("创建DNS记录失败: zoneId={}, namePrefix={}", zoneId, request.getNamePrefix(), e);
+            throw new RuntimeException("创建DNS记录失败: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public CloudflareDnsRecord convertCreateResponseToEntity(CreateDnsRecordResponse createResponse, String zoneId) {
+        try {
+            if (createResponse == null || createResponse.getResult() == null) {
+                throw new IllegalArgumentException("创建DNS记录响应数据为空");
+            }
+            
+            CreateDnsRecordResponse.DnsRecordResult result = createResponse.getResult();
+            CloudflareDnsRecord entity = new CloudflareDnsRecord();
+            
+            // 基本信息
+            entity.setZoneId(zoneId);
+            entity.setRecordId(result.getId());
+            entity.setName(result.getName());
+            entity.setType(result.getType());
+            entity.setContent(result.getContent());
+            
+            // 代理设置
+            entity.setProxiable(result.isProxiable());
+            entity.setProxied(result.isProxied());
+            entity.setTtl(result.getTtl());
+            
+            // 优先级和权重
+            entity.setPriority(result.getPriority());
+            entity.setWeight(result.getWeight());
+            entity.setPort(result.getPort());
+            
+            // JSON字段
+            entity.setSettings(result.getSettings());
+            entity.setMeta(result.getMeta());
+            entity.setTags(result.getTags());
+            
+            // 备注
+            entity.setComment(result.getComment());
+            
+            // Cloudflare时间字段
+            entity.setCreatedOn(parseCloudflareTime(result.getCreatedOn()));
+            entity.setModifiedOn(parseCloudflareTime(result.getModifiedOn()));
+            entity.setCommentModifiedOn(parseCloudflareTime(result.getCommentModifiedOn()));
+            
+            // 同步状态
+            entity.setSyncStatus("SUCCESS");
+            entity.setLastSyncTime(LocalDateTime.now());
+            entity.setIsActive(true);
+            
+            // 本地时间戳
+            entity.setCreateTime(LocalDateTime.now());
+            entity.setUpdateTime(LocalDateTime.now());
+            
+            log.debug("转换创建DNS记录响应成功: name={}, type={}, content={}", 
+                    entity.getName(), entity.getType(), entity.getContent());
+            return entity;
+        } catch (Exception e) {
+            log.error("转换创建DNS记录响应数据为本地实体失败", e);
+            throw new RuntimeException("转换DNS记录数据失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 验证创建DNS记录请求参数
+     */
+    private void validateCreateDnsRecordRequest(CreateDnsRecordRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("创建DNS记录请求不能为空");
+        }
+        
+        if (request.getNamePrefix() == null || request.getNamePrefix().trim().isEmpty()) {
+            throw new IllegalArgumentException("记录名称前缀不能为空");
+        }
+        
+        if (request.getType() == null || request.getType().trim().isEmpty()) {
+            throw new IllegalArgumentException("记录类型不能为空");
+        }
+        
+        if (request.getContent() == null || request.getContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("记录内容不能为空");
+        }
+        
+        if (request.getTtl() == null || request.getTtl() < 1) {
+            throw new IllegalArgumentException("TTL值必须大于等于1");
+        }
+        
+        // 验证MX记录
+        if (!request.validateMxRecord()) {
+            throw new IllegalArgumentException("MX记录必须设置优先级");
+        }
+        
+        // 验证SRV记录
+        if (!request.validateSrvRecord()) {
+            throw new IllegalArgumentException("SRV记录必须设置优先级、权重、端口、服务名、协议和目标");
+        }
+        
+        log.debug("DNS记录请求参数验证通过: namePrefix={}, type={}", request.getNamePrefix(), request.getType());
     }
     
     @Override

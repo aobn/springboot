@@ -1,15 +1,18 @@
 package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
+import com.example.demo.dto.CreateDnsRecordRequest;
 import com.example.demo.entity.CloudflareDnsRecord;
 import com.example.demo.service.CloudflareDnsRecordService;
 import com.example.demo.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -23,10 +26,49 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/cloudflare/dns")
 @RequiredArgsConstructor
+@Validated
 public class CloudflareDnsRecordController {
     
     private final CloudflareDnsRecordService cloudflareRecordService;
     private final JwtUtil jwtUtil;
+    
+    /**
+     * 创建DNS记录到Cloudflare
+     */
+    @PostMapping("/create/{zoneId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<CloudflareDnsRecord> createDnsRecord(
+            @PathVariable String zoneId,
+            @Valid @RequestBody CreateDnsRecordRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            log.info("=== 开始创建DNS记录 ===");
+            log.info("Zone ID: {}, 记录名称前缀: {}, 类型: {}, 内容: {}", 
+                    zoneId, request.getNamePrefix(), request.getType(), request.getContent());
+            
+            // 获取管理员信息
+            String token = httpRequest.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                Long adminId = jwtUtil.getUserIdFromToken(token);
+                log.info("管理员 {} 请求创建DNS记录", adminId);
+            }
+            
+            // 创建DNS记录
+            CloudflareDnsRecord createdRecord = cloudflareRecordService.createDnsRecord(zoneId, request);
+            
+            log.info("DNS记录创建成功: recordId={}, name={}, type={}", 
+                    createdRecord.getRecordId(), createdRecord.getName(), createdRecord.getType());
+            return ApiResponse.success(createdRecord);
+            
+        } catch (IllegalArgumentException e) {
+            log.error("DNS记录创建参数错误: {}", e.getMessage());
+            return ApiResponse.error(400, "参数错误: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("创建DNS记录失败: zoneId={}, namePrefix={}", zoneId, request.getNamePrefix(), e);
+            return ApiResponse.error(500, "创建DNS记录失败: " + e.getMessage());
+        }
+    }
     
     /**
      * 同步指定Zone的DNS记录
