@@ -1,6 +1,7 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.CloudflareZoneResponse;
+import com.example.demo.dto.CloudflareDnsRecordResponse;
 import com.example.demo.service.CloudflareService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -163,6 +164,102 @@ public class CloudflareServiceImpl implements CloudflareService {
             String errorMsg = "根据域名名称获取Zone信息失败: " + e.getMessage();
             log.error(errorMsg, e);
             throw new RuntimeException(errorMsg, e);
+        }
+    }
+    
+    @Override
+    public CloudflareDnsRecordResponse getDnsRecords(String zoneId) throws Exception {
+        log.info("开始调用Cloudflare API获取Zone {} 的DNS记录", zoneId);
+        
+        if (zoneId == null || zoneId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Zone ID不能为空");
+        }
+        
+        try {
+            // 构建请求URL
+            String url = CLOUDFLARE_API_BASE_URL + "/zones/" + zoneId + "/dns_records";
+            
+            // 构建HTTP请求
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("X-Auth-Email", apiEmail)
+                    .header("X-Auth-Key", apiKey)
+                    .header("Content-Type", "application/json")
+                    .GET()
+                    .timeout(Duration.ofSeconds(30))
+                    .build();
+            
+            log.info("发送Cloudflare DNS记录API请求: {}", url);
+            
+            // 发送请求
+            HttpResponse<String> response = httpClient.send(request, 
+                    HttpResponse.BodyHandlers.ofString());
+            
+            log.info("Cloudflare DNS记录API响应状态码: {}", response.statusCode());
+            log.debug("Cloudflare DNS记录API响应内容: {}", response.body());
+            
+            // 检查HTTP状态码
+            if (response.statusCode() != 200) {
+                String errorMsg = String.format("Cloudflare DNS记录API调用失败，状态码: %d, 响应: %s", 
+                        response.statusCode(), response.body());
+                log.error(errorMsg);
+                throw new RuntimeException(errorMsg);
+            }
+            
+            // 解析响应JSON
+            CloudflareDnsRecordResponse recordResponse = objectMapper.readValue(
+                    response.body(), CloudflareDnsRecordResponse.class);
+            
+            // 检查API调用是否成功
+            if (!recordResponse.isSuccess()) {
+                String errorMsg = "Cloudflare DNS记录API返回失败状态";
+                if (recordResponse.getErrors() != null && !recordResponse.getErrors().isEmpty()) {
+                    errorMsg += ": " + recordResponse.getErrors().toString();
+                }
+                log.error(errorMsg);
+                throw new RuntimeException(errorMsg);
+            }
+            
+            // 记录成功信息
+            int recordCount = recordResponse.getResult() != null ? recordResponse.getResult().size() : 0;
+            log.info("成功获取Zone {} 的DNS记录，共 {} 条记录", zoneId, recordCount);
+            
+            if (recordResponse.getResult() != null) {
+                for (CloudflareDnsRecordResponse.DnsRecord record : recordResponse.getResult()) {
+                    log.debug("DNS记录: {} {} {} (ID: {})", record.getName(), record.getType(), 
+                            record.getContent(), record.getId());
+                }
+            }
+            
+            return recordResponse;
+            
+        } catch (IOException e) {
+            String errorMsg = "Cloudflare DNS记录API网络请求失败: " + e.getMessage();
+            log.error(errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
+        } catch (InterruptedException e) {
+            String errorMsg = "Cloudflare DNS记录API请求被中断: " + e.getMessage();
+            log.error(errorMsg, e);
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(errorMsg, e);
+        } catch (Exception e) {
+            String errorMsg = "Cloudflare DNS记录API调用异常: " + e.getMessage();
+            log.error(errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
+        }
+    }
+    
+    @Override
+    public boolean testConnection() {
+        try {
+            log.info("=== 测试Cloudflare API连接 ===");
+            CloudflareZoneResponse response = getAllZones();
+            boolean success = response != null && response.isSuccess();
+            log.info("Cloudflare API连接测试结果: {}", success ? "成功" : "失败");
+            return success;
+        } catch (Exception e) {
+            log.error("Cloudflare API连接测试失败", e);
+            return false;
         }
     }
 }

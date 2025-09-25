@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.CloudflareZoneResponse;
+import com.example.demo.dto.CloudflareDnsRecordResponse;
 import java.util.List;
 
 /**
@@ -28,4 +29,20 @@ public interface CloudflareService {
      * @throws Exception 调用API异常
      */
     CloudflareZoneResponse.Zone getZoneByName(String zoneName) throws Exception;
+    
+    /**
+     * 获取指定Zone的DNS记录
+     * 
+     * @param zoneId Zone ID
+     * @return DNS记录响应
+     * @throws Exception 调用API异常
+     */
+    CloudflareDnsRecordResponse getDnsRecords(String zoneId) throws Exception;
+    
+    /**
+     * 测试Cloudflare API连接
+     * 
+     * @return 是否连接成功
+     */
+    boolean testConnection();
 }

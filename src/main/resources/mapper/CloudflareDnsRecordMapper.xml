@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.CloudflareDnsRecordMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="CloudflareDnsRecordResultMap" type="com.example.demo.entity.CloudflareDnsRecord">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="zone_id" property="zoneId" jdbcType="VARCHAR"/>
+        <result column="record_id" property="recordId" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="type" property="type" jdbcType="VARCHAR"/>
+        <result column="content" property="content" jdbcType="LONGVARCHAR"/>
+        <result column="proxiable" property="proxiable" jdbcType="TINYINT"/>
+        <result column="proxied" property="proxied" jdbcType="TINYINT"/>
+        <result column="ttl" property="ttl" jdbcType="INTEGER"/>
+        <result column="priority" property="priority" jdbcType="INTEGER"/>
+        <result column="weight" property="weight" jdbcType="INTEGER"/>
+        <result column="port" property="port" jdbcType="INTEGER"/>
+        <result column="service" property="service" jdbcType="VARCHAR"/>
+        <result column="proto" property="proto" jdbcType="VARCHAR"/>
+        <result column="target" property="target" jdbcType="VARCHAR"/>
+        <result column="settings" property="settings" jdbcType="LONGVARCHAR" typeHandler="com.example.demo.config.JsonMapTypeHandler"/>
+        <result column="meta" property="meta" jdbcType="LONGVARCHAR" typeHandler="com.example.demo.config.JsonMapTypeHandler"/>
+        <result column="tags" property="tags" jdbcType="LONGVARCHAR" typeHandler="com.example.demo.config.JsonTypeHandler"/>
+        <result column="comment" property="comment" jdbcType="LONGVARCHAR"/>
+        <result column="comment_modified_on" property="commentModifiedOn" jdbcType="TIMESTAMP"/>
+        <result column="created_on" property="createdOn" jdbcType="TIMESTAMP"/>
+        <result column="modified_on" property="modifiedOn" jdbcType="TIMESTAMP"/>
+        <result column="sync_status" property="syncStatus" jdbcType="VARCHAR"/>
+        <result column="sync_error" property="syncError" jdbcType="LONGVARCHAR"/>
+        <result column="last_sync_time" property="lastSyncTime" jdbcType="TIMESTAMP"/>
+        <result column="is_active" property="isActive" jdbcType="TINYINT"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, zone_id, record_id, name, type, content, proxiable, proxied, ttl,
+        priority, weight, port, service, proto, target, settings, meta, tags,
+        comment, comment_modified_on, created_on, modified_on, sync_status,
+        sync_error, last_sync_time, is_active, remark, create_time, update_time
+    </sql>
+
+    <!-- 插入DNS记录 -->
+    <insert id="insert" parameterType="com.example.demo.entity.CloudflareDnsRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cloudflare_dns_record (
+            zone_id, record_id, name, type, content, proxiable, proxied, ttl,
+            priority, weight, port, service, proto, target, settings, meta, tags,
+            comment, comment_modified_on, created_on, modified_on, sync_status,
+            sync_error, last_sync_time, is_active, remark
+        ) VALUES (
+            #{zoneId}, #{recordId}, #{name}, #{type}, #{content}, #{proxiable}, #{proxied}, #{ttl},
+            #{priority}, #{weight}, #{port}, #{service}, #{proto}, #{target},
+            #{settings, typeHandler=com.example.demo.config.JsonMapTypeHandler},
+            #{meta, typeHandler=com.example.demo.config.JsonMapTypeHandler},
+            #{tags, typeHandler=com.example.demo.config.JsonTypeHandler},
+            #{comment}, #{commentModifiedOn}, #{createdOn}, #{modifiedOn}, #{syncStatus},
+            #{syncError}, #{lastSyncTime}, #{isActive}, #{remark}
+        )
+    </insert>
+
+    <!-- 批量插入DNS记录 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO cloudflare_dns_record (
+            zone_id, record_id, name, type, content, proxiable, proxied, ttl,
+            priority, weight, port, service, proto, target, settings, meta, tags,
+            comment, comment_modified_on, created_on, modified_on, sync_status,
+            sync_error, last_sync_time, is_active, remark
+        ) VALUES
+        <foreach collection="records" item="record" separator=",">
+            (
+                #{record.zoneId}, #{record.recordId}, #{record.name}, #{record.type}, #{record.content},
+                #{record.proxiable}, #{record.proxied}, #{record.ttl}, #{record.priority}, #{record.weight},
+                #{record.port}, #{record.service}, #{record.proto}, #{record.target},
+                #{record.settings, typeHandler=com.example.demo.config.JsonMapTypeHandler},
+                #{record.meta, typeHandler=com.example.demo.config.JsonMapTypeHandler},
+                #{record.tags, typeHandler=com.example.demo.config.JsonTypeHandler},
+                #{record.comment}, #{record.commentModifiedOn}, #{record.createdOn}, #{record.modifiedOn},
+                #{record.syncStatus}, #{record.syncError}, #{record.lastSyncTime}, #{record.isActive}, #{record.remark}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 根据记录ID更新DNS记录 -->
+    <update id="updateByRecordId" parameterType="com.example.demo.entity.CloudflareDnsRecord">
+        UPDATE cloudflare_dns_record SET
+            zone_id = #{zoneId},
+            name = #{name},
+            type = #{type},
+            content = #{content},
+            proxiable = #{proxiable},
+            proxied = #{proxied},
+            ttl = #{ttl},
+            priority = #{priority},
+            weight = #{weight},
+            port = #{port},
+            service = #{service},
+            proto = #{proto},
+            target = #{target},
+            settings = #{settings, typeHandler=com.example.demo.config.JsonMapTypeHandler},
+            meta = #{meta, typeHandler=com.example.demo.config.JsonMapTypeHandler},
+            tags = #{tags, typeHandler=com.example.demo.config.JsonTypeHandler},
+            comment = #{comment},
+            comment_modified_on = #{commentModifiedOn},
+            created_on = #{createdOn},
+            modified_on = #{modifiedOn},
+            sync_status = #{syncStatus},
+            sync_error = #{syncError},
+            last_sync_time = #{lastSyncTime},
+            is_active = #{isActive},
+            remark = #{remark},
+            update_time = NOW()
+        WHERE record_id = #{recordId}
+    </update>
+
+    <!-- 根据记录ID删除DNS记录 -->
+    <delete id="deleteByRecordId" parameterType="java.lang.String">
+        DELETE FROM cloudflare_dns_record WHERE record_id = #{recordId}
+    </delete>
+
+    <!-- 根据Zone ID删除所有DNS记录 -->
+    <delete id="deleteByZoneId" parameterType="java.lang.String">
+        DELETE FROM cloudflare_dns_record WHERE zone_id = #{zoneId}
+    </delete>
+
+    <!-- 根据记录ID查询DNS记录 -->
+    <select id="findByRecordId" parameterType="java.lang.String" resultMap="CloudflareDnsRecordResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM cloudflare_dns_record
+        WHERE record_id = #{recordId}
+    </select>
+
+    <!-- 根据Zone ID查询所有DNS记录 -->
+    <select id="findByZoneId" parameterType="java.lang.String" resultMap="CloudflareDnsRecordResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM cloudflare_dns_record
+        WHERE zone_id = #{zoneId}
+        ORDER BY type, name
+    </select>
+
+    <!-- 根据Zone ID和记录类型查询DNS记录 -->
+    <select id="findByZoneIdAndType" resultMap="CloudflareDnsRecordResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM cloudflare_dns_record
+        WHERE zone_id = #{zoneId} AND type = #{type}
+        ORDER BY name
+    </select>
+
+    <!-- 根据Zone ID和记录名称查询DNS记录 -->
+    <select id="findByZoneIdAndName" resultMap="CloudflareDnsRecordResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM cloudflare_dns_record
+        WHERE zone_id = #{zoneId} AND name = #{name}
+        ORDER BY type
+    </select>
+
+    <!-- 查询所有DNS记录 -->
+    <select id="findAll" resultMap="CloudflareDnsRecordResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM cloudflare_dns_record
+        ORDER BY zone_id, type, name
+    </select>
+
+    <!-- 根据同步状态查询DNS记录 -->
+    <select id="findBySyncStatus" parameterType="java.lang.String" resultMap="CloudflareDnsRecordResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM cloudflare_dns_record
+        WHERE sync_status = #{syncStatus}
+        ORDER BY last_sync_time DESC
+    </select>
+
+    <!-- 统计Zone的DNS记录数量 -->
+    <select id="countByZoneId" parameterType="java.lang.String" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM cloudflare_dns_record WHERE zone_id = #{zoneId}
+    </select>
+
+    <!-- 统计指定类型的DNS记录数量 -->
+    <select id="countByZoneIdAndType" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM cloudflare_dns_record WHERE zone_id = #{zoneId} AND type = #{type}
+    </select>
+
+</mapper>
