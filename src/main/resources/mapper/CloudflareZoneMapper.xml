@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.CloudflareZoneMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="CloudflareZoneResultMap" type="com.example.demo.entity.CloudflareZone">
+        <id property="id" column="id"/>
+        <result property="zoneId" column="zone_id"/>
+        <result property="name" column="name"/>
+        <result property="status" column="status"/>
+        <result property="paused" column="paused"/>
+        <result property="type" column="type"/>
+        <result property="developmentMode" column="development_mode"/>
+        <result property="nameServers" column="name_servers" typeHandler="com.example.demo.config.JsonTypeHandler"/>
+        <result property="originalNameServers" column="original_name_servers" typeHandler="com.example.demo.config.JsonTypeHandler"/>
+        <result property="originalRegistrar" column="original_registrar"/>
+        <result property="originalDnshost" column="original_dnshost"/>
+        <result property="createdOn" column="created_on"/>
+        <result property="modifiedOn" column="modified_on"/>
+        <result property="activatedOn" column="activated_on"/>
+        <result property="vanityNameServers" column="vanity_name_servers" typeHandler="com.example.demo.config.JsonTypeHandler"/>
+        <result property="vanityNameServersIps" column="vanity_name_servers_ips" typeHandler="com.example.demo.config.JsonTypeHandler"/>
+        <result property="metaStep" column="meta_step"/>
+        <result property="metaCustomCertificateQuota" column="meta_custom_certificate_quota"/>
+        <result property="metaPageRuleQuota" column="meta_page_rule_quota"/>
+        <result property="metaPhishingDetected" column="meta_phishing_detected"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="ownerType" column="owner_type"/>
+        <result property="ownerEmail" column="owner_email"/>
+        <result property="accountId" column="account_id"/>
+        <result property="accountName" column="account_name"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="tenantName" column="tenant_name"/>
+        <result property="tenantUnitId" column="tenant_unit_id"/>
+        <result property="planId" column="plan_id"/>
+        <result property="planName" column="plan_name"/>
+        <result property="planPrice" column="plan_price"/>
+        <result property="planCurrency" column="plan_currency"/>
+        <result property="planFrequency" column="plan_frequency"/>
+        <result property="planIsSubscribed" column="plan_is_subscribed"/>
+        <result property="planCanSubscribe" column="plan_can_subscribe"/>
+        <result property="planLegacyId" column="plan_legacy_id"/>
+        <result property="planLegacyDiscount" column="plan_legacy_discount"/>
+        <result property="planExternallyManaged" column="plan_externally_managed"/>
+        <result property="permissions" column="permissions" typeHandler="com.example.demo.config.JsonTypeHandler"/>
+        <result property="syncStatus" column="sync_status"/>
+        <result property="syncError" column="sync_error"/>
+        <result property="lastSyncTime" column="last_sync_time"/>
+        <result property="isActive" column="is_active"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!-- 批量插入或更新 -->
+    <insert id="batchInsertOrUpdate" parameterType="java.util.List">
+        INSERT INTO cloudflare_zone (
+            zone_id, name, status, paused, type, development_mode,
+            name_servers, original_name_servers, original_registrar, original_dnshost,
+            created_on, modified_on, activated_on,
+            vanity_name_servers, vanity_name_servers_ips,
+            meta_step, meta_custom_certificate_quota, meta_page_rule_quota, meta_phishing_detected,
+            owner_id, owner_type, owner_email,
+            account_id, account_name, tenant_id, tenant_name, tenant_unit_id,
+            plan_id, plan_name, plan_price, plan_currency, plan_frequency,
+            plan_is_subscribed, plan_can_subscribe, plan_legacy_id, plan_legacy_discount, plan_externally_managed,
+            permissions, sync_status, sync_error, last_sync_time, is_active, remark
+        ) VALUES
+        <foreach collection="list" item="zone" separator=",">
+            (
+                #{zone.zoneId}, #{zone.name}, #{zone.status}, #{zone.paused}, #{zone.type}, #{zone.developmentMode},
+                #{zone.nameServers,typeHandler=com.example.demo.config.JsonTypeHandler},
+                #{zone.originalNameServers,typeHandler=com.example.demo.config.JsonTypeHandler},
+                #{zone.originalRegistrar}, #{zone.originalDnshost},
+                #{zone.createdOn}, #{zone.modifiedOn}, #{zone.activatedOn},
+                #{zone.vanityNameServers,typeHandler=com.example.demo.config.JsonTypeHandler},
+                #{zone.vanityNameServersIps,typeHandler=com.example.demo.config.JsonTypeHandler},
+                #{zone.metaStep}, #{zone.metaCustomCertificateQuota}, #{zone.metaPageRuleQuota}, #{zone.metaPhishingDetected},
+                #{zone.ownerId}, #{zone.ownerType}, #{zone.ownerEmail},
+                #{zone.accountId}, #{zone.accountName}, #{zone.tenantId}, #{zone.tenantName}, #{zone.tenantUnitId},
+                #{zone.planId}, #{zone.planName}, #{zone.planPrice}, #{zone.planCurrency}, #{zone.planFrequency},
+                #{zone.planIsSubscribed}, #{zone.planCanSubscribe}, #{zone.planLegacyId}, #{zone.planLegacyDiscount}, #{zone.planExternallyManaged},
+                #{zone.permissions,typeHandler=com.example.demo.config.JsonTypeHandler},
+                #{zone.syncStatus}, #{zone.syncError}, #{zone.lastSyncTime}, #{zone.isActive}, #{zone.remark}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            status = VALUES(status),
+            paused = VALUES(paused),
+            type = VALUES(type),
+            development_mode = VALUES(development_mode),
+            name_servers = VALUES(name_servers),
+            original_name_servers = VALUES(original_name_servers),
+            original_registrar = VALUES(original_registrar),
+            original_dnshost = VALUES(original_dnshost),
+            created_on = VALUES(created_on),
+            modified_on = VALUES(modified_on),
+            activated_on = VALUES(activated_on),
+            vanity_name_servers = VALUES(vanity_name_servers),
+            vanity_name_servers_ips = VALUES(vanity_name_servers_ips),
+            meta_step = VALUES(meta_step),
+            meta_custom_certificate_quota = VALUES(meta_custom_certificate_quota),
+            meta_page_rule_quota = VALUES(meta_page_rule_quota),
+            meta_phishing_detected = VALUES(meta_phishing_detected),
+            owner_id = VALUES(owner_id),
+            owner_type = VALUES(owner_type),
+            owner_email = VALUES(owner_email),
+            account_id = VALUES(account_id),
+            account_name = VALUES(account_name),
+            tenant_id = VALUES(tenant_id),
+            tenant_name = VALUES(tenant_name),
+            tenant_unit_id = VALUES(tenant_unit_id),
+            plan_id = VALUES(plan_id),
+            plan_name = VALUES(plan_name),
+            plan_price = VALUES(plan_price),
+            plan_currency = VALUES(plan_currency),
+            plan_frequency = VALUES(plan_frequency),
+            plan_is_subscribed = VALUES(plan_is_subscribed),
+            plan_can_subscribe = VALUES(plan_can_subscribe),
+            plan_legacy_id = VALUES(plan_legacy_id),
+            plan_legacy_discount = VALUES(plan_legacy_discount),
+            plan_externally_managed = VALUES(plan_externally_managed),
+            permissions = VALUES(permissions),
+            sync_status = VALUES(sync_status),
+            sync_error = VALUES(sync_error),
+            last_sync_time = VALUES(last_sync_time),
+            is_active = VALUES(is_active),
+            remark = VALUES(remark)
+    </insert>
+
+</mapper>

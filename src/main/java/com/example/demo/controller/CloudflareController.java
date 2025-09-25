@@ -2,7 +2,9 @@ package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.CloudflareZoneResponse;
+import com.example.demo.entity.CloudflareZone;
 import com.example.demo.service.CloudflareService;
+import com.example.demo.service.CloudflareZoneService;
 import com.example.demo.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,9 @@ public class CloudflareController {
     
     @Autowired
     private CloudflareService cloudflareService;
+    
+    @Autowired
+    private CloudflareZoneService cloudflareZoneService;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -239,6 +244,121 @@ public class CloudflareController {
         } catch (Exception e) {
             log.error("测试Cloudflare API连接失败", e);
             return ApiResponse.error(500, "API连接测试失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 同步Cloudflare域名数据到本地数据库
+     * 
+     * @param authHeader Authorization头信息
+     * @return 同步结果
+     */
+    @PostMapping("/sync-zones")
+    public ApiResponse<String> syncZones(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            log.info("=== 开始同步Cloudflare域名数据到本地数据库 ===");
+            
+            // 用户身份验证
+            String token = authHeader.replace("Bearer ", "");
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            String role = jwtUtil.getRoleFromToken(token);
+            
+            // 权限验证（管理员权限）
+            if (!"ADMIN".equals(role)) {
+                return ApiResponse.error(403, "需要管理员权限才能同步域名数据");
+            }
+            
+            // 执行同步操作
+            int syncedCount = cloudflareZoneService.syncZonesFromCloudflare();
+            
+            String message = String.format("成功同步 %d 个Cloudflare域名到本地数据库", syncedCount);
+            log.info(message);
+            return ApiResponse.success(message);
+            
+        } catch (Exception e) {
+            log.error("同步Cloudflare域名数据失败", e);
+            return ApiResponse.error(500, "同步域名数据失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取本地存储的Cloudflare域名列表
+     * 
+     * @param authHeader Authorization头信息
+     * @return 本地域名列表
+     */
+    @GetMapping("/local-zones")
+    public ApiResponse<List<CloudflareZone>> getLocalZones(
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            log.info("=== 开始获取本地存储的Cloudflare域名列表 ===");
+            
+            // 用户身份验证
+            String token = authHeader.replace("Bearer ", "");
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            String role = jwtUtil.getRoleFromToken(token);
+            
+            // 权限验证（管理员权限）
+            if (!"ADMIN".equals(role)) {
+                return ApiResponse.error(403, "需要管理员权限才能查看域名数据");
+            }
+            
+            // 获取本地域名列表
+            List<CloudflareZone> zones = cloudflareZoneService.getAllLocalZones();
+            
+            String message = String.format("成功获取 %d 个本地存储的域名", zones.size());
+            log.info(message);
+            return ApiResponse.success(message, zones);
+            
+        } catch (Exception e) {
+            log.error("获取本地域名列表失败", e);
+            return ApiResponse.error(500, "获取本地域名列表失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 根据域名名称获取本地存储的域名信息
+     * 
+     * @param zoneName 域名名称
+     * @param authHeader Authorization头信息
+     * @return 本地域名信息
+     */
+    @GetMapping("/local-zones/{zoneName}")
+    public ApiResponse<CloudflareZone> getLocalZoneByName(
+            @PathVariable String zoneName,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            log.info("=== 开始获取本地存储的域名信息: {} ===", zoneName);
+            
+            // 用户身份验证
+            String token = authHeader.replace("Bearer ", "");
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            String role = jwtUtil.getRoleFromToken(token);
+            
+            // 权限验证（管理员权限）
+            if (!"ADMIN".equals(role)) {
+                return ApiResponse.error(403, "需要管理员权限才能查看域名数据");
+            }
+            
+            // 参数验证
+            if (zoneName == null || zoneName.trim().isEmpty()) {
+                return ApiResponse.error(400, "域名名称不能为空");
+            }
+            
+            // 获取本地域名信息
+            CloudflareZone zone = cloudflareZoneService.getLocalZoneByName(zoneName);
+            
+            if (zone == null) {
+                return ApiResponse.error(404, "未找到指定域名: " + zoneName);
+            }
+            
+            log.info("成功获取本地域名信息: name={}, id={}", zone.getName(), zone.getId());
+            return ApiResponse.success("成功获取本地域名信息", zone);
+            
+        } catch (Exception e) {
+            log.error("获取本地域名信息失败", e);
+            return ApiResponse.error(500, "获取本地域名信息失败: " + e.getMessage());
         }
     }
 }
