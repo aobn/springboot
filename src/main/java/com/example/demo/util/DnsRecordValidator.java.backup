@@ -1,8 +1,6 @@
 package com.example.demo.util;
 
 import java.util.regex.Pattern;
-import java.net.InetAddress;
-import java.net.Inet6Address;
 
 /**
  * DNS记录参数校验工具类

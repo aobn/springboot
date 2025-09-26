@@ -50,6 +50,13 @@
         <result property="remark" column="remark"/>
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
+        <result property="dnsRecordCount" column="dns_record_count"/>
+        <result property="dnsRecordLimit" column="dns_record_limit"/>
+        <result property="userCount" column="user_count"/>
+        <result property="userLimit" column="user_limit"/>
+        <result property="isFull" column="is_full"/>
+        <result property="autoAssignEnabled" column="auto_assign_enabled"/>
+        <result property="nextPrefixHex" column="next_prefix_hex"/>
     </resultMap>
 
     <!-- 批量插入或更新 -->
@@ -64,7 +71,8 @@
             account_id, account_name, tenant_id, tenant_name, tenant_unit_id,
             plan_id, plan_name, plan_price, plan_currency, plan_frequency,
             plan_is_subscribed, plan_can_subscribe, plan_legacy_id, plan_legacy_discount, plan_externally_managed,
-            permissions, sync_status, sync_error, last_sync_time, is_active, remark
+            permissions, sync_status, sync_error, last_sync_time, is_active, remark,
+            dns_record_count, dns_record_limit, user_count, user_limit, is_full, auto_assign_enabled, next_prefix_hex
         ) VALUES
         <foreach collection="list" item="zone" separator=",">
             (
@@ -81,7 +89,9 @@
                 #{zone.planId}, #{zone.planName}, #{zone.planPrice}, #{zone.planCurrency}, #{zone.planFrequency},
                 #{zone.planIsSubscribed}, #{zone.planCanSubscribe}, #{zone.planLegacyId}, #{zone.planLegacyDiscount}, #{zone.planExternallyManaged},
                 #{zone.permissions,typeHandler=com.example.demo.config.JsonTypeHandler},
-                #{zone.syncStatus}, #{zone.syncError}, #{zone.lastSyncTime}, #{zone.isActive}, #{zone.remark}
+                #{zone.syncStatus}, #{zone.syncError}, #{zone.lastSyncTime}, #{zone.isActive}, #{zone.remark},
+                #{zone.dnsRecordCount}, #{zone.dnsRecordLimit}, #{zone.userCount}, #{zone.userLimit}, 
+                #{zone.isFull}, #{zone.autoAssignEnabled}, #{zone.nextPrefixHex}
             )
         </foreach>
         ON DUPLICATE KEY UPDATE
@@ -126,7 +136,14 @@
             sync_error = VALUES(sync_error),
             last_sync_time = VALUES(last_sync_time),
             is_active = VALUES(is_active),
-            remark = VALUES(remark)
+            remark = VALUES(remark),
+            dns_record_count = VALUES(dns_record_count),
+            dns_record_limit = VALUES(dns_record_limit),
+            user_count = VALUES(user_count),
+            user_limit = VALUES(user_limit),
+            is_full = VALUES(is_full),
+            auto_assign_enabled = VALUES(auto_assign_enabled),
+            next_prefix_hex = VALUES(next_prefix_hex)
     </insert>
 
 </mapper>

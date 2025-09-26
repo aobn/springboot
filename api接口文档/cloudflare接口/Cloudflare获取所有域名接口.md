@@ -5,14 +5,13 @@
 - **接口标识**: `CLOUDFLARE_GET_ALL_ZONES`
 - **请求路径**: `GET /api/cloudflare/zones`
 - **接口描述**: 获取Cloudflare账户下的所有域名(Zone)列表
-- **认证要求**: 需要管理员权限
+- **认证要求**: 无需认证（公开接口）
 - **适用业务单元**: Cloudflare域名管理
 
 ## 请求参数
 
 ### 请求头
 ```http
-Authorization: Bearer <JWT_TOKEN>
 Content-Type: application/json
 ```
 
@@ -97,26 +96,6 @@ Content-Type: application/json
 
 ### 失败响应
 
-#### 权限不足（403）
-```json
-{
-  "code": 403,
-  "message": "需要管理员权限才能访问Cloudflare API",
-  "data": null,
-  "timestamp": "2025-09-25T21:00:00Z"
-}
-```
-
-#### 未授权（401）
-```json
-{
-  "code": 401,
-  "message": "JWT令牌无效或已过期",
-  "data": null,
-  "timestamp": "2025-09-25T21:00:00Z"
-}
-```
-
 #### Cloudflare API调用失败（500）
 ```json
 {
@@ -179,11 +158,9 @@ Content-Type: application/json
 
 ## 业务流程
 
-1. **用户身份验证**: 验证JWT令牌有效性
-2. **权限验证**: 检查用户是否具有管理员权限
-3. **调用Cloudflare API**: 使用配置的API Key和Email调用Cloudflare API
-4. **响应处理**: 解析API响应并返回标准格式
-5. **错误处理**: 处理各种异常情况并返回相应错误信息
+1. **调用Cloudflare API**: 使用配置的API Key和Email调用Cloudflare API
+2. **响应处理**: 解析API响应并返回标准格式
+3. **错误处理**: 处理各种异常情况并返回相应错误信息
 
 ## 调试说明
 
@@ -192,7 +169,6 @@ Content-Type: application/json
 #### 测试用例1：成功获取域名列表
 ```bash
 curl -X GET "http://localhost:8001/api/cloudflare/zones" \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
   -H "Content-Type: application/json"
 ```
 
@@ -201,31 +177,19 @@ curl -X GET "http://localhost:8001/api/cloudflare/zones" \
 - data包含域名列表信息
 - success=true
 
-#### 测试用例2：非管理员用户访问
+#### 测试用例2：API调用失败
 ```bash
 curl -X GET "http://localhost:8001/api/cloudflare/zones" \
-  -H "Authorization: Bearer <USER_JWT_TOKEN>" \
   -H "Content-Type: application/json"
 ```
 
-**预期响应**: 
-- code=403
-- message="需要管理员权限才能访问Cloudflare API"
-
-#### 测试用例3：无效JWT令牌
-```bash
-curl -X GET "http://localhost:8001/api/cloudflare/zones" \
-  -H "Authorization: Bearer invalid_token" \
-  -H "Content-Type: application/json"
-```
-
-**预期响应**: 
-- code=401
-- message="JWT令牌无效或已过期"
+**预期响应**（当Cloudflare API配置错误时）: 
+- code=500
+- message="调用Cloudflare API失败: Invalid API key"
 
 ## 注意事项
 
-1. **权限要求**: 只有管理员用户才能调用此接口
+1. **公开接口**: 此接口无需认证，任何人都可以访问
 2. **API配额**: Cloudflare API有调用频率限制，请合理使用
 3. **安全性**: API Key和Email已在配置文件中设置，请确保配置文件安全
 4. **错误处理**: 接口会处理网络异常、API异常等各种情况
@@ -239,3 +203,4 @@ curl -X GET "http://localhost:8001/api/cloudflare/zones" \
 ## 更新记录
 
 - 2025-09-25: 初始版本，实现基础的域名列表获取功能
+- 2025-09-26: 更新为公开接口，移除认证要求

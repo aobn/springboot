@@ -31,7 +31,8 @@ public interface CloudflareZoneMapper {
             account_id, account_name, tenant_id, tenant_name, tenant_unit_id,
             plan_id, plan_name, plan_price, plan_currency, plan_frequency,
             plan_is_subscribed, plan_can_subscribe, plan_legacy_id, plan_legacy_discount, plan_externally_managed,
-            permissions, sync_status, sync_error, last_sync_time, is_active, remark
+            permissions, sync_status, sync_error, last_sync_time, is_active, remark,
+            dns_record_count, dns_record_limit, user_count, user_limit, is_full, auto_assign_enabled, next_prefix_hex
         ) VALUES (
             #{zoneId}, #{name}, #{status}, #{paused}, #{type}, #{developmentMode},
             #{nameServers,typeHandler=com.example.demo.config.JsonTypeHandler}, 
@@ -46,7 +47,9 @@ public interface CloudflareZoneMapper {
             #{planId}, #{planName}, #{planPrice}, #{planCurrency}, #{planFrequency},
             #{planIsSubscribed}, #{planCanSubscribe}, #{planLegacyId}, #{planLegacyDiscount}, #{planExternallyManaged},
             #{permissions,typeHandler=com.example.demo.config.JsonTypeHandler}, 
-            #{syncStatus}, #{syncError}, #{lastSyncTime}, #{isActive}, #{remark}
+            #{syncStatus}, #{syncError}, #{lastSyncTime}, #{isActive}, #{remark},
+            #{dnsRecordCount}, #{dnsRecordLimit}, #{userCount}, #{userLimit}, 
+            #{isFull}, #{autoAssignEnabled}, #{nextPrefixHex}
         )
     """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
@@ -79,7 +82,10 @@ public interface CloudflareZoneMapper {
             plan_externally_managed = #{planExternallyManaged},
             permissions = #{permissions,typeHandler=com.example.demo.config.JsonTypeHandler},
             sync_status = #{syncStatus}, sync_error = #{syncError}, last_sync_time = #{lastSyncTime},
-            is_active = #{isActive}, remark = #{remark}
+            is_active = #{isActive}, remark = #{remark},
+            dns_record_count = #{dnsRecordCount}, dns_record_limit = #{dnsRecordLimit},
+            user_count = #{userCount}, user_limit = #{userLimit}, is_full = #{isFull},
+            auto_assign_enabled = #{autoAssignEnabled}, next_prefix_hex = #{nextPrefixHex}
         WHERE zone_id = #{zoneId}
     """)
     int updateByZoneId(CloudflareZone zone);
@@ -97,7 +103,14 @@ public interface CloudflareZoneMapper {
         @Result(property = "originalNameServers", column = "original_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServers", column = "vanity_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServersIps", column = "vanity_name_servers_ips", typeHandler = com.example.demo.config.JsonTypeHandler.class),
-        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class)
+        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class),
+        @Result(property = "dnsRecordCount", column = "dns_record_count"),
+        @Result(property = "dnsRecordLimit", column = "dns_record_limit"),
+        @Result(property = "userCount", column = "user_count"),
+        @Result(property = "userLimit", column = "user_limit"),
+        @Result(property = "isFull", column = "is_full"),
+        @Result(property = "autoAssignEnabled", column = "auto_assign_enabled"),
+        @Result(property = "nextPrefixHex", column = "next_prefix_hex")
     })
     CloudflareZone findByZoneId(String zoneId);
     
@@ -114,7 +127,14 @@ public interface CloudflareZoneMapper {
         @Result(property = "originalNameServers", column = "original_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServers", column = "vanity_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServersIps", column = "vanity_name_servers_ips", typeHandler = com.example.demo.config.JsonTypeHandler.class),
-        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class)
+        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class),
+        @Result(property = "dnsRecordCount", column = "dns_record_count"),
+        @Result(property = "dnsRecordLimit", column = "dns_record_limit"),
+        @Result(property = "userCount", column = "user_count"),
+        @Result(property = "userLimit", column = "user_limit"),
+        @Result(property = "isFull", column = "is_full"),
+        @Result(property = "autoAssignEnabled", column = "auto_assign_enabled"),
+        @Result(property = "nextPrefixHex", column = "next_prefix_hex")
     })
     CloudflareZone findByName(String name);
     
@@ -130,7 +150,14 @@ public interface CloudflareZoneMapper {
         @Result(property = "originalNameServers", column = "original_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServers", column = "vanity_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServersIps", column = "vanity_name_servers_ips", typeHandler = com.example.demo.config.JsonTypeHandler.class),
-        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class)
+        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class),
+        @Result(property = "dnsRecordCount", column = "dns_record_count"),
+        @Result(property = "dnsRecordLimit", column = "dns_record_limit"),
+        @Result(property = "userCount", column = "user_count"),
+        @Result(property = "userLimit", column = "user_limit"),
+        @Result(property = "isFull", column = "is_full"),
+        @Result(property = "autoAssignEnabled", column = "auto_assign_enabled"),
+        @Result(property = "nextPrefixHex", column = "next_prefix_hex")
     })
     List<CloudflareZone> findAll();
     
@@ -147,7 +174,14 @@ public interface CloudflareZoneMapper {
         @Result(property = "originalNameServers", column = "original_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServers", column = "vanity_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServersIps", column = "vanity_name_servers_ips", typeHandler = com.example.demo.config.JsonTypeHandler.class),
-        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class)
+        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class),
+        @Result(property = "dnsRecordCount", column = "dns_record_count"),
+        @Result(property = "dnsRecordLimit", column = "dns_record_limit"),
+        @Result(property = "userCount", column = "user_count"),
+        @Result(property = "userLimit", column = "user_limit"),
+        @Result(property = "isFull", column = "is_full"),
+        @Result(property = "autoAssignEnabled", column = "auto_assign_enabled"),
+        @Result(property = "nextPrefixHex", column = "next_prefix_hex")
     })
     List<CloudflareZone> findByStatus(String status);
     
@@ -164,7 +198,14 @@ public interface CloudflareZoneMapper {
         @Result(property = "originalNameServers", column = "original_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServers", column = "vanity_name_servers", typeHandler = com.example.demo.config.JsonTypeHandler.class),
         @Result(property = "vanityNameServersIps", column = "vanity_name_servers_ips", typeHandler = com.example.demo.config.JsonTypeHandler.class),
-        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class)
+        @Result(property = "permissions", column = "permissions", typeHandler = com.example.demo.config.JsonTypeHandler.class),
+        @Result(property = "dnsRecordCount", column = "dns_record_count"),
+        @Result(property = "dnsRecordLimit", column = "dns_record_limit"),
+        @Result(property = "userCount", column = "user_count"),
+        @Result(property = "userLimit", column = "user_limit"),
+        @Result(property = "isFull", column = "is_full"),
+        @Result(property = "autoAssignEnabled", column = "auto_assign_enabled"),
+        @Result(property = "nextPrefixHex", column = "next_prefix_hex")
     })
     List<CloudflareZone> findByAccountId(String accountId);
     

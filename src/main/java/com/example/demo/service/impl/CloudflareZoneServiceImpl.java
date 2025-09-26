@@ -5,7 +5,7 @@ import com.example.demo.dto.CloudflareZoneResponse;
 import com.example.demo.mapper.CloudflareZoneMapper;
 import com.example.demo.service.CloudflareService;
 import com.example.demo.service.CloudflareZoneService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,9 +15,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
+
 import java.util.List;
-import java.util.Map;
+
 
 /**
  * 文件名：CloudflareZoneServiceImpl.java
@@ -33,7 +33,7 @@ public class CloudflareZoneServiceImpl implements CloudflareZoneService {
     
     private final CloudflareZoneMapper cloudflareZoneMapper;
     private final CloudflareService cloudflareService;
-    private final ObjectMapper objectMapper;
+
     
     @Override
     @Transactional
@@ -307,12 +307,22 @@ public class CloudflareZoneServiceImpl implements CloudflareZoneService {
             entity.setLastSyncTime(now);
             entity.setIsActive(true);
             
+            // 新增字段设置默认值
+            entity.setDnsRecordCount(0);
+            entity.setDnsRecordLimit(200);
+            entity.setUserCount(0);
+            entity.setUserLimit(100);
+            entity.setIsFull(false);
+            entity.setAutoAssignEnabled(true);
+            entity.setNextPrefixHex("0.1");
+            
             // 本地时间戳
             entity.setCreateTime(now);
             entity.setUpdateTime(now);
             
-            log.info("转换完成，域名实体信息: name={}, createdOn={}, modifiedOn={}, accountId={}, planId={}", 
-                    entity.getName(), entity.getCreatedOn(), entity.getModifiedOn(), entity.getAccountId(), entity.getPlanId());
+            log.info("转换完成，域名实体信息: name={}, createdOn={}, modifiedOn={}, accountId={}, planId={}, dnsRecordLimit={}, userLimit={}", 
+                    entity.getName(), entity.getCreatedOn(), entity.getModifiedOn(), entity.getAccountId(), entity.getPlanId(), 
+                    entity.getDnsRecordLimit(), entity.getUserLimit());
             
             return entity;
         } catch (Exception e) {

@@ -5,6 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import java.util.regex.Pattern;
+import java.net.InetAddress;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 
 /**
  * 文件名：UserCloudflareDnsRecordRequest.java
@@ -140,5 +144,114 @@ public class UserCloudflareDnsRecordRequest {
         }
         
         return priority != null;
+    }
+    
+    /**
+     * 验证DNS记录内容格式
+     * @return 验证结果，null表示验证通过，否则返回错误信息
+     */
+    public String validateContent() {
+        if (content == null || content.trim().isEmpty()) {
+            return "记录内容不能为空";
+        }
+        
+        String trimmedContent = content.trim();
+        
+        switch (type.toUpperCase()) {
+            case "A":
+                return validateIPv4Address(trimmedContent);
+            case "AAAA":
+                return validateIPv6Address(trimmedContent);
+            case "CNAME":
+            case "MX":
+            case "NS":
+                return validateDomainName(trimmedContent);
+            case "TXT":
+                return validateTxtRecord(trimmedContent);
+            case "SRV":
+                return validateSrvContent(trimmedContent);
+            default:
+                return null; // 其他类型暂不验证
+        }
+    }
+    
+    /**
+     * 验证IPv4地址格式
+     */
+    private String validateIPv4Address(String ip) {
+        try {
+            InetAddress addr = InetAddress.getByName(ip);
+            if (!(addr instanceof Inet4Address)) {
+                return "IPv4地址格式不正确";
+            }
+            return null;
+        } catch (Exception e) {
+            return "IPv4地址格式不正确";
+        }
+    }
+    
+    /**
+     * 验证IPv6地址格式
+     */
+    private String validateIPv6Address(String ip) {
+        try {
+            InetAddress addr = InetAddress.getByName(ip);
+            if (!(addr instanceof Inet6Address)) {
+                return "IPv6地址格式不正确";
+            }
+            return null;
+        } catch (Exception e) {
+            return "IPv6地址格式不正确";
+        }
+    }
+    
+    /**
+     * 验证域名格式
+     */
+    private String validateDomainName(String domain) {
+        // 域名正则表达式
+        String domainRegex = "^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+" +
+                           "[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$";
+        
+        if (!Pattern.matches(domainRegex, domain)) {
+            return "域名格式不正确";
+        }
+        
+        if (domain.length() > 253) {
+            return "域名长度不能超过253个字符";
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 验证TXT记录内容
+     */
+    private String validateTxtRecord(String txt) {
+        if (txt.length() > 255) {
+            return "TXT记录内容长度不能超过255个字符";
+        }
+        return null;
+    }
+    
+    /**
+     * 验证SRV记录内容格式
+     */
+    private String validateSrvContent(String srv) {
+        // SRV记录格式：priority weight port target
+        String[] parts = srv.split("\\s+");
+        if (parts.length != 4) {
+            return "SRV记录格式不正确，应为：priority weight port target";
+        }
+        
+        try {
+            Integer.parseInt(parts[0]); // priority
+            Integer.parseInt(parts[1]); // weight
+            Integer.parseInt(parts[2]); // port
+            // parts[3] 是target域名，可以进一步验证
+            return validateDomainName(parts[3]);
+        } catch (NumberFormatException e) {
+            return "SRV记录中的数字格式不正确";
+        }
     }
 }

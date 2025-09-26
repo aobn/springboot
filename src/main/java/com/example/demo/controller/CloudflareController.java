@@ -34,36 +34,17 @@ public class CloudflareController {
     private JwtUtil jwtUtil;
     
     /**
-     * 获取所有Cloudflare域名列表
+     * 获取所有Cloudflare域名列表（公开接口，无需认证）
      * 
-     * @param authHeader Authorization头信息
      * @return 域名列表响应
      */
     @GetMapping("/zones")
-    public ApiResponse<CloudflareZoneResponse> getAllZones(
-            @RequestHeader("Authorization") String authHeader) {
+    public ApiResponse<CloudflareZoneResponse> getAllZones() {
         try {
-            log.info("=== 开始获取Cloudflare所有域名列表 ===");
+            log.info("=== 开始获取Cloudflare所有域名列表（公开接口） ===");
             
-            // 步骤1：用户身份验证
-            log.info("步骤1：执行用户身份验证");
-            String token = authHeader.replace("Bearer ", "");
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            String email = jwtUtil.getEmailFromToken(token);
-            String role = jwtUtil.getRoleFromToken(token);
-            
-            log.info("用户身份验证成功：userId={}, email={}, role={}", userId, email, role);
-            
-            // 步骤2：权限验证（管理员权限）
-            log.info("步骤2：执行权限验证");
-            if (!"ADMIN".equals(role)) {
-                log.warn("权限验证失败：用户{}不是管理员，角色为{}", userId, role);
-                return ApiResponse.error(403, "需要管理员权限才能访问Cloudflare API");
-            }
-            log.info("权限验证通过：用户{}具有管理员权限", userId);
-            
-            // 步骤3：调用Cloudflare API获取域名列表
-            log.info("步骤3：调用Cloudflare API获取域名列表");
+            // 调用Cloudflare API获取域名列表
+            log.info("调用Cloudflare API获取域名列表");
             CloudflareZoneResponse response;
             try {
                 response = cloudflareService.getAllZones();
@@ -72,8 +53,8 @@ public class CloudflareController {
                 return ApiResponse.error(500, "调用Cloudflare API失败: " + apiException.getMessage());
             }
             
-            // 步骤4：处理响应结果
-            log.info("步骤4：处理API响应结果");
+            // 处理响应结果
+            log.info("处理API响应结果");
             if (response == null) {
                 log.error("Cloudflare API返回空响应");
                 return ApiResponse.error(500, "获取域名列表失败：API返回空响应");
@@ -88,7 +69,7 @@ public class CloudflareController {
                 return ApiResponse.error(500, errorMsg);
             }
             
-            // 步骤5：记录成功信息并返回结果
+            // 记录成功信息并返回结果
             int zoneCount = response.getResult() != null ? response.getResult().size() : 0;
             log.info("成功获取Cloudflare域名列表，共 {} 个域名", zoneCount);
             
@@ -103,16 +84,6 @@ public class CloudflareController {
             return ApiResponse.success("成功获取Cloudflare域名列表", response);
             
         } catch (Exception e) {
-            // 检查是否是JWT相关异常
-            if (e instanceof io.jsonwebtoken.JwtException || 
-                e instanceof io.jsonwebtoken.security.SignatureException ||
-                e instanceof io.jsonwebtoken.ExpiredJwtException ||
-                e instanceof io.jsonwebtoken.MalformedJwtException ||
-                e instanceof io.jsonwebtoken.UnsupportedJwtException) {
-                log.error("JWT认证失败", e);
-                throw e; // 重新抛出让全局异常处理器处理
-            }
-            
             log.error("获取Cloudflare域名列表失败", e);
             return ApiResponse.error(500, "获取域名列表失败: " + e.getMessage());
         }

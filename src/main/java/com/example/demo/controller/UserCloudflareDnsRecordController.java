@@ -75,10 +75,10 @@ public class UserCloudflareDnsRecordController {
             }
             
             // 3. 验证记录类型和值的格式
-            DnsRecordValidator.ValidationResult validationResult = 
-                DnsRecordValidator.validateRecordValue(request.getType(), request.getContent());
-            if (!validationResult.isValid()) {
-                return ApiResponse.error(400, "参数验证失败：" + validationResult.getErrorMessage());
+            String contentValidationError = request.validateContent();
+            if (contentValidationError != null) {
+                log.warn("DNS记录内容格式验证失败: {}", contentValidationError);
+                return ApiResponse.error(400, "参数验证失败：" + contentValidationError);
             }
             
             // 4. 验证特殊记录类型的必需字段
