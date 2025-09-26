@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.CloudflareZone;
+import com.example.demo.dto.SimpleCloudflareZoneResponse;
 import com.example.demo.dto.CloudflareZoneResponse;
 import java.util.List;
 
@@ -66,6 +67,13 @@ public interface CloudflareZoneService {
      * @return 删除结果
      */
     boolean deleteZone(String zoneId);
+    
+    /**
+     * 获取所有简化的Cloudflare域名信息（用于公开接口）
+     * 
+     * @return 简化的域名列表
+     */
+    List<SimpleCloudflareZoneResponse> getAllSimpleZones();
     
     /**
      * 将Cloudflare API响应转换为本地实体

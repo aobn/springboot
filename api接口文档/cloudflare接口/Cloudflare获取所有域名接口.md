@@ -4,7 +4,7 @@
 
 - **接口标识**: `CLOUDFLARE_GET_ALL_ZONES`
 - **请求路径**: `GET /api/cloudflare/zones`
-- **接口描述**: 获取Cloudflare账户下的所有域名(Zone)列表
+- **接口描述**: 获取本地数据库中存储的所有Cloudflare域名列表（包含新增的统计字段，不包含复杂的meta、owner、tenant、permissions、plan等字段）
 - **认证要求**: 无需认证（公开接口）
 - **适用业务单元**: Cloudflare域名管理
 
@@ -26,141 +26,103 @@ Content-Type: application/json
 {
   "code": 200,
   "message": "成功获取Cloudflare域名列表",
-  "data": {
-    "result": [
-      {
-        "id": "bd9427cabe2a367df8875f0f726a3e2a",
-        "name": "000297.xyz",
-        "status": "active",
-        "paused": false,
-        "type": "full",
-        "development_mode": 0,
-        "name_servers": [
-          "alina.ns.cloudflare.com",
-          "carlos.ns.cloudflare.com"
-        ],
-        "original_name_servers": [
-          "launch2.spaceship.net",
-          "launch1.spaceship.net"
-        ],
-        "original_registrar": null,
-        "original_dnshost": null,
-        "modified_on": "2025-08-07T15:01:18.308896Z",
-        "created_on": "2025-08-07T14:35:46.809045Z",
-        "activated_on": "2025-08-07T15:01:18.308896Z",
-        "vanity_name_servers": [],
-        "vanity_name_servers_ips": null,
-        "meta": {
-          "step": 2,
-          "custom_certificate_quota": 0,
-          "page_rule_quota": 3,
-          "phishing_detected": false
-        },
-        "owner": {
-          "id": null,
-          "type": "user",
-          "email": null
-        },
-        "account": {
-          "id": "3025192dbe43c46336fb61944e51f413",
-          "name": "Xianhuawork@163.com's Account"
-        },
-        "plan": {
-          "id": "0feeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-          "name": "Free Website",
-          "price": 0,
-          "currency": "USD",
-          "frequency": "",
-          "is_subscribed": false,
-          "can_subscribe": false,
-          "legacy_id": "free",
-          "legacy_discount": false,
-          "externally_managed": false
-        }
-      }
-    ],
-    "result_info": {
-      "page": 1,
-      "per_page": 20,
-      "total_pages": 1,
-      "count": 5,
-      "total_count": 5
+  "data": [
+    {
+      "zone_id": "bd9427cabe2a367df8875f0f726a3e2a",
+      "name": "f.b.a.2.8.f.0.7.4.0.1.0.0.2.ip6.arpa",
+      "status": "active",
+      "paused": false,
+      "type": "full",
+      "name_servers": [
+        "alina.ns.cloudflare.com",
+        "carlos.ns.cloudflare.com"
+      ],
+      "created_on": "2025-08-07 14:35:46",
+      "modified_on": "2025-08-07 15:01:18",
+      "dns_record_count": 15,
+      "dns_record_limit": 200,
+      "user_count": 3,
+      "user_limit": 100,
+      "is_full": false,
+      "auto_assign_enabled": true,
+      "next_prefix_hex": "0.4",
+      "is_active": true,
+      "remark": "IPv6反向解析域名",
+      "create_time": "2025-09-25 10:30:00",
+      "update_time": "2025-09-26 15:20:30"
     },
-    "success": true,
-    "errors": [],
-    "messages": []
-  },
-  "timestamp": "2025-09-25T21:00:00Z"
+    {
+      "zone_id": "cd8537dabe3b468ef9986g1g837b4f3b",
+      "name": "f.c.a.2.8.f.0.7.4.0.1.0.0.2.ip6.arpa",
+      "status": "active",
+      "paused": false,
+      "type": "full",
+      "name_servers": [
+        "alina.ns.cloudflare.com",
+        "carlos.ns.cloudflare.com"
+      ],
+      "created_on": "2025-08-08 09:15:30",
+      "modified_on": "2025-08-08 09:45:12",
+      "dns_record_count": 8,
+      "dns_record_limit": 200,
+      "user_count": 2,
+      "user_limit": 100,
+      "is_full": false,
+      "auto_assign_enabled": true,
+      "next_prefix_hex": "0.3",
+      "is_active": true,
+      "remark": "IPv6反向解析域名",
+      "create_time": "2025-09-25 11:00:00",
+      "update_time": "2025-09-26 16:10:15"
+    }
+  ],
+  "timestamp": "2025-09-26T16:00:00Z"
 }
 ```
 
 ### 失败响应
 
-#### Cloudflare API调用失败（500）
+#### 数据库查询失败（500）
 ```json
 {
   "code": 500,
-  "message": "Cloudflare API调用失败: Invalid API key",
+  "message": "从数据库获取域名列表失败: Connection timeout",
   "data": null,
-  "timestamp": "2025-09-25T21:00:00Z"
+  "timestamp": "2025-09-26T16:00:00Z"
 }
 ```
 
 ## 响应字段说明
 
-### Zone对象字段
+### 简化域名对象字段
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
-| id | String | Cloudflare Zone ID |
+| zone_id | String | Cloudflare Zone ID |
 | name | String | 域名名称 |
 | status | String | 域名状态(active/pending/initializing/moved/deleted/deactivated) |
 | paused | Boolean | 是否暂停 |
 | type | String | Zone类型(full/partial) |
-| development_mode | Integer | 开发模式剩余时间(秒) |
 | name_servers | Array | Cloudflare名称服务器列表 |
-| original_name_servers | Array | 原始名称服务器列表 |
-| created_on | String | 创建时间(ISO 8601格式) |
-| modified_on | String | 修改时间(ISO 8601格式) |
-| activated_on | String | 激活时间(ISO 8601格式) |
-
-### Meta对象字段
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| step | Integer | 设置步骤 |
-| custom_certificate_quota | Integer | 自定义证书配额 |
-| page_rule_quota | Integer | 页面规则配额 |
-| phishing_detected | Boolean | 是否检测到钓鱼 |
-
-### Account对象字段
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| id | String | 账户ID |
-| name | String | 账户名称 |
-
-### Plan对象字段
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| id | String | 计划ID |
-| name | String | 计划名称 |
-| price | Double | 价格 |
-| currency | String | 货币 |
-| is_subscribed | Boolean | 是否已订阅 |
-| can_subscribe | Boolean | 是否可订阅 |
-
-### ResultInfo对象字段
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| page | Integer | 当前页码 |
-| per_page | Integer | 每页数量 |
-| total_pages | Integer | 总页数 |
-| count | Integer | 当前页数量 |
-| total_count | Integer | 总数量 |
+| created_on | String | Cloudflare创建时间(yyyy-MM-dd HH:mm:ss格式) |
+| modified_on | String | Cloudflare修改时间(yyyy-MM-dd HH:mm:ss格式) |
+| dns_record_count | Integer | DNS记录总数量 |
+| dns_record_limit | Integer | DNS记录数量限制 |
+| user_count | Integer | 已注册用户数量 |
+| user_limit | Integer | 用户数量限制 |
+| is_full | Boolean | 是否已满(用户数量达到限制) |
+| auto_assign_enabled | Boolean | 是否启用自动分配前缀 |
+| next_prefix_hex | String | 下一个可分配的十六进制前缀 |
+| is_active | Boolean | 本地启用状态 |
+| remark | String | 备注信息 |
+| create_time | String | 本地创建时间(yyyy-MM-dd HH:mm:ss格式) |
+| update_time | String | 本地更新时间(yyyy-MM-dd HH:mm:ss格式) |
 
 ## 业务流程
 
-1. **调用Cloudflare API**: 使用配置的API Key和Email调用Cloudflare API
-2. **响应处理**: 解析API响应并返回标准格式
-3. **错误处理**: 处理各种异常情况并返回相应错误信息
+1. **数据库查询**: 从本地数据库查询所有活跃的Cloudflare域名信息
+2. **数据转换**: 将数据库实体转换为简化的响应DTO格式
+3. **响应处理**: 返回包含新增统计字段的域名列表
+4. **错误处理**: 处理数据库异常等情况并返回相应错误信息
 
 ## 调试说明
 
@@ -204,3 +166,4 @@ curl -X GET "http://localhost:8001/api/cloudflare/zones" \
 
 - 2025-09-25: 初始版本，实现基础的域名列表获取功能
 - 2025-09-26: 更新为公开接口，移除认证要求
+- 2025-09-26: 更新响应格式，返回简化的域名信息，包含新增的统计字段

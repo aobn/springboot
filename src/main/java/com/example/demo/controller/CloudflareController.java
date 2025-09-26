@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.CloudflareZoneResponse;
+import com.example.demo.dto.SimpleCloudflareZoneResponse;
 import com.example.demo.entity.CloudflareZone;
 import com.example.demo.service.CloudflareService;
 import com.example.demo.service.CloudflareZoneService;
@@ -39,49 +40,43 @@ public class CloudflareController {
      * @return 域名列表响应
      */
     @GetMapping("/zones")
-    public ApiResponse<CloudflareZoneResponse> getAllZones() {
+    public ApiResponse<List<SimpleCloudflareZoneResponse>> getAllZones() {
         try {
             log.info("=== 开始获取Cloudflare所有域名列表（公开接口） ===");
             
-            // 调用Cloudflare API获取域名列表
-            log.info("调用Cloudflare API获取域名列表");
-            CloudflareZoneResponse response;
+            // 从数据库获取域名列表（包含新增字段）
+            log.info("从数据库获取Cloudflare域名列表");
+            List<SimpleCloudflareZoneResponse> zoneList;
             try {
-                response = cloudflareService.getAllZones();
-            } catch (Exception apiException) {
-                log.error("调用Cloudflare API失败", apiException);
-                return ApiResponse.error(500, "调用Cloudflare API失败: " + apiException.getMessage());
+                zoneList = cloudflareZoneService.getAllSimpleZones();
+            } catch (Exception dbException) {
+                log.error("从数据库获取域名列表失败", dbException);
+                return ApiResponse.error(500, "从数据库获取域名列表失败: " + dbException.getMessage());
             }
             
             // 处理响应结果
-            log.info("处理API响应结果");
-            if (response == null) {
-                log.error("Cloudflare API返回空响应");
-                return ApiResponse.error(500, "获取域名列表失败：API返回空响应");
+            log.info("处理域名列表数据");
+            if (zoneList == null) {
+                log.error("数据库返回空结果");
+                return ApiResponse.error(500, "数据库返回空结果");
             }
             
-            if (!response.isSuccess()) {
-                String errorMsg = "Cloudflare API调用失败";
-                if (response.getErrors() != null && !response.getErrors().isEmpty()) {
-                    errorMsg += ": " + response.getErrors().get(0).getMessage();
-                }
-                log.error(errorMsg);
-                return ApiResponse.error(500, errorMsg);
+            if (zoneList.isEmpty()) {
+                log.warn("未找到任何Cloudflare域名");
+                return ApiResponse.success("未找到任何Cloudflare域名", zoneList);
             }
             
-            // 记录成功信息并返回结果
-            int zoneCount = response.getResult() != null ? response.getResult().size() : 0;
-            log.info("成功获取Cloudflare域名列表，共 {} 个域名", zoneCount);
+            log.info("成功获取Cloudflare域名列表，共 {} 个域名", zoneList.size());
             
-            if (response.getResult() != null) {
-                for (CloudflareZoneResponse.Zone zone : response.getResult()) {
-                    log.debug("域名详情: name={}, id={}, status={}, type={}", 
-                            zone.getName(), zone.getId(), zone.getStatus(), zone.getType());
-                }
+            for (SimpleCloudflareZoneResponse zone : zoneList) {
+                log.debug("域名详情: name={}, zone_id={}, status={}, user_count={}/{}, dns_record_count={}/{}", 
+                        zone.getName(), zone.getZoneId(), zone.getStatus(), 
+                        zone.getUserCount(), zone.getUserLimit(),
+                        zone.getDnsRecordCount(), zone.getDnsRecordLimit());
             }
             
             log.info("=== Cloudflare域名列表获取完成 ===");
-            return ApiResponse.success("成功获取Cloudflare域名列表", response);
+            return ApiResponse.success("成功获取Cloudflare域名列表", zoneList);
             
         } catch (Exception e) {
             log.error("获取Cloudflare域名列表失败", e);

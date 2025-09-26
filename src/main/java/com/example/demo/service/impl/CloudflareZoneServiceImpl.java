@@ -2,6 +2,7 @@ package com.example.demo.service.impl;
 
 import com.example.demo.entity.CloudflareZone;
 import com.example.demo.dto.CloudflareZoneResponse;
+import com.example.demo.dto.SimpleCloudflareZoneResponse;
 import com.example.demo.mapper.CloudflareZoneMapper;
 import com.example.demo.service.CloudflareService;
 import com.example.demo.service.CloudflareZoneService;
@@ -373,5 +374,66 @@ public class CloudflareZoneServiceImpl implements CloudflareZoneService {
             log.warn("解析时间字符串异常: {}, 使用默认值: {}, 异常: {}", dateTimeStr, defaultValue, e.getMessage());
             return defaultValue;
         }
+    }
+    
+    @Override
+    public List<SimpleCloudflareZoneResponse> getAllSimpleZones() {
+        try {
+            log.info("=== 开始获取所有简化的Cloudflare域名信息 ===");
+            
+            // 从数据库获取所有活跃的域名
+            List<CloudflareZone> zones = cloudflareZoneMapper.findAllActive();
+            
+            if (zones == null || zones.isEmpty()) {
+                log.warn("数据库中没有找到任何活跃的Cloudflare域名");
+                return new ArrayList<>();
+            }
+            
+            // 转换为简化的响应DTO
+            List<SimpleCloudflareZoneResponse> simpleZones = new ArrayList<>();
+            for (CloudflareZone zone : zones) {
+                SimpleCloudflareZoneResponse simpleZone = convertToSimpleResponse(zone);
+                simpleZones.add(simpleZone);
+            }
+            
+            log.info("成功获取 {} 个简化的Cloudflare域名信息", simpleZones.size());
+            return simpleZones;
+            
+        } catch (Exception e) {
+            log.error("获取简化的Cloudflare域名信息失败", e);
+            throw new RuntimeException("获取域名信息失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 将CloudflareZone实体转换为SimpleCloudflareZoneResponse
+     * 
+     * @param zone 域名实体
+     * @return 简化的响应DTO
+     */
+    private SimpleCloudflareZoneResponse convertToSimpleResponse(CloudflareZone zone) {
+        SimpleCloudflareZoneResponse response = new SimpleCloudflareZoneResponse();
+        
+        response.setZoneId(zone.getZoneId());
+        response.setName(zone.getName());
+        response.setStatus(zone.getStatus());
+        response.setPaused(zone.getPaused());
+        response.setType(zone.getType());
+        response.setNameServers(zone.getNameServers());
+        response.setCreatedOn(zone.getCreatedOn());
+        response.setModifiedOn(zone.getModifiedOn());
+        response.setDnsRecordCount(zone.getDnsRecordCount());
+        response.setDnsRecordLimit(zone.getDnsRecordLimit());
+        response.setUserCount(zone.getUserCount());
+        response.setUserLimit(zone.getUserLimit());
+        response.setIsFull(zone.getIsFull());
+        response.setAutoAssignEnabled(zone.getAutoAssignEnabled());
+        response.setNextPrefixHex(zone.getNextPrefixHex());
+        response.setIsActive(zone.getIsActive());
+        response.setRemark(zone.getRemark());
+        response.setCreateTime(zone.getCreateTime());
+        response.setUpdateTime(zone.getUpdateTime());
+        
+        return response;
     }
 }

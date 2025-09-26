@@ -14,7 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +46,17 @@ public class UserCloudflareZoneServiceImpl implements UserCloudflareZoneService 
         UserCloudflareZoneRegisterResponse response = new UserCloudflareZoneRegisterResponse();
         
         try {
+            // 检查用户可注册域名数量限制
+            Integer userDomainLimit = jdbcTemplate.queryForObject(
+                "SELECT fn_check_user_domain_limit(?)", Integer.class, userId);
+            
+            if (userDomainLimit == null || userDomainLimit <= 0) {
+                response.setResultCode(403);
+                response.setResultMessage("您的可注册域名数量已用完，无法注册新域名");
+                log.warn("用户 {} 可注册域名数量不足: {}", userId, userDomainLimit);
+                return response;
+            }
+            
             // 检查用户是否已注册该域名
             UserCloudflareZone existingZone = userCloudflareZoneMapper.findByUserIdAndZoneId(userId, request.getZoneId());
             if (existingZone != null) {
@@ -81,7 +92,10 @@ public class UserCloudflareZoneServiceImpl implements UserCloudflareZoneService 
             response.setResultMessage(resultMessage);
             
             if (resultCode == 201) {
-                // 注册成功，查询注册记录详情
+                // 注册成功，减少用户可注册域名数量
+                jdbcTemplate.update("UPDATE user SET dom_num = dom_num - 1 WHERE id = ? AND dom_num > 0", userId);
+                
+                // 查询注册记录详情
                 UserCloudflareZone userZone = userCloudflareZoneMapper.findByUserIdAndZoneId(userId, request.getZoneId());
                 if (userZone != null) {
                     response.setId(userZone.getId());
@@ -97,7 +111,7 @@ public class UserCloudflareZoneServiceImpl implements UserCloudflareZoneService 
                     response.setAssignedTime(userZone.getAssignedTime());
                 }
                 
-                log.info("用户 {} 成功注册Cloudflare域名: {}, 分配前缀: {}, 完整子域名: {}", 
+                log.info("用户 {} 成功注册Cloudflare域名: {}, 分配前缀: {}, 完整子域名: {}, 剩余可注册数量已减1", 
                     userId, request.getZoneId(), assignedPrefix, fullSubdomain);
             } else {
                 log.warn("用户 {} 注册Cloudflare域名失败: {}, 错误: {}", userId, request.getZoneId(), resultMessage);
@@ -259,7 +273,9 @@ public class UserCloudflareZoneServiceImpl implements UserCloudflareZoneService 
             // 软删除域名记录
             int result = userCloudflareZoneMapper.unregisterZone(id, userId);
             if (result > 0) {
-                log.info("用户 {} 成功注销域名记录: {}", userId, id);
+                // 注销成功，恢复用户可注册域名数量
+                jdbcTemplate.update("UPDATE user SET dom_num = dom_num + 1 WHERE id = ?", userId);
+                log.info("用户 {} 成功注销域名记录: {}，可注册域名数量已恢复+1", userId, id);
                 return true;
             }
             
@@ -340,5 +356,59 @@ public class UserCloudflareZoneServiceImpl implements UserCloudflareZoneService 
             log.error("获取用户 {} 在域名 {} 的记录异常", userId, zoneId, e);
             return null;
         }
+    }
+    
+    /**
+     * 获取用户Cloudflare域名注册统计信息
+     */
+    @Override
+    public UserCloudflareZoneListResponse.UserDomainStats getUserDomainStats(Long userId) {
+        log.info("获取用户 {} 的Cloudflare域名注册统计信息", userId);
+        
+        UserCloudflareZoneListResponse.UserDomainStats stats = new UserCloudflareZoneListResponse.UserDomainStats();
+        
+        try {
+            // 获取用户可注册域名数量
+            Integer availableDomains = jdbcTemplate.queryForObject(
+                "SELECT dom_num FROM user WHERE id = ?", Integer.class, userId);
+            stats.setAvailableDomains(availableDomains != null ? availableDomains : 0);
+            
+            // 获取用户已注册的Cloudflare域名数量
+            Integer registeredCloudflareZones = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_cloudflare_domain WHERE user_id = ? AND status = 'ACTIVE'", 
+                Integer.class, userId);
+            stats.setRegisteredCloudflareZones(registeredCloudflareZones != null ? registeredCloudflareZones : 0);
+            
+            // 获取用户已注册的DNSPod域名数量（从user_subdomain表）
+            Integer registeredDnspodDomains = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_subdomain WHERE user_id = ? AND status = 'ACTIVE'", 
+                Integer.class, userId);
+            stats.setRegisteredDnspodDomains(registeredDnspodDomains != null ? registeredDnspodDomains : 0);
+            
+            // 计算总已注册域名数量
+            stats.setTotalRegisteredDomains(stats.getRegisteredCloudflareZones() + stats.getRegisteredDnspodDomains());
+            
+            // 判断注册状态
+            if (stats.getAvailableDomains() > 0) {
+                stats.setRegistrationStatus("CAN_REGISTER");
+            } else {
+                stats.setRegistrationStatus("LIMIT_REACHED");
+            }
+            
+            log.info("用户 {} 域名统计: 可注册={}, Cloudflare已注册={}, DNSPod已注册={}, 总已注册={}", 
+                userId, stats.getAvailableDomains(), stats.getRegisteredCloudflareZones(), 
+                stats.getRegisteredDnspodDomains(), stats.getTotalRegisteredDomains());
+            
+        } catch (Exception e) {
+            log.error("获取用户 {} 的域名统计信息异常", userId, e);
+            // 设置默认值
+            stats.setAvailableDomains(0);
+            stats.setRegisteredCloudflareZones(0);
+            stats.setRegisteredDnspodDomains(0);
+            stats.setTotalRegisteredDomains(0);
+            stats.setRegistrationStatus("LIMIT_REACHED");
+        }
+        
+        return stats;
     }
 }

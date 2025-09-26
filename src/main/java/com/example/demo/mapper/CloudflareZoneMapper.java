@@ -162,6 +162,14 @@ public interface CloudflareZoneMapper {
     List<CloudflareZone> findAll();
     
     /**
+     * 查询所有活跃的域名信息（别名方法）
+     * @return 活跃的Cloudflare域名信息列表
+     */
+    default List<CloudflareZone> findAllActive() {
+        return findAll();
+    }
+    
+    /**
      * 根据状态查询域名信息
      * @param status 域名状态
      * @return Cloudflare域名信息列表

@@ -222,4 +222,30 @@ public class UserCloudflareZoneController {
             return ApiResponse.error(500, "系统错误，请稍后重试");
         }
     }
+    
+    /**
+     * 获取用户域名注册统计信息
+     * 获取用户的域名注册数量统计和限制信息
+     */
+    @GetMapping("/stats")
+    public ApiResponse<UserCloudflareZoneListResponse.UserDomainStats> getUserDomainStats(
+            HttpServletRequest httpRequest) {
+        
+        try {
+            // 从JWT令牌获取用户ID
+            String token = jwtUtil.getTokenFromRequest(httpRequest);
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            log.info("用户 {} 请求获取域名注册统计信息", userId);
+            
+            UserCloudflareZoneListResponse.UserDomainStats stats = 
+                userCloudflareZoneService.getUserDomainStats(userId);
+            
+            return ApiResponse.success("获取域名统计信息成功", stats);
+            
+        } catch (Exception e) {
+            log.error("获取用户域名统计信息异常", e);
+            return ApiResponse.error(500, "系统错误，请稍后重试");
+        }
+    }
 }

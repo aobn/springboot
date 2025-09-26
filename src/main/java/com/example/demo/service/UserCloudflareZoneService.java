@@ -92,4 +92,12 @@ public interface UserCloudflareZoneService {
      * @return 用户域名记录
      */
     UserCloudflareZone getUserZoneByZoneId(Long userId, String zoneId);
+    
+    /**
+     * 获取用户Cloudflare域名注册统计信息
+     * 
+     * @param userId 用户ID
+     * @return 用户域名统计信息
+     */
+    UserCloudflareZoneListResponse.UserDomainStats getUserDomainStats(Long userId);
 }

@@ -148,4 +148,35 @@ public class UserCloudflareZoneListResponse {
          */
         private Integer availablePrefixes;
     }
+    
+    /**
+     * 用户域名统计信息
+     */
+    @Data
+    public static class UserDomainStats {
+        /**
+         * 用户可注册域名数量
+         */
+        private Integer availableDomains;
+        
+        /**
+         * 已注册的Cloudflare域名数量
+         */
+        private Integer registeredCloudflareZones;
+        
+        /**
+         * 已注册的DNSPod域名数量
+         */
+        private Integer registeredDnspodDomains;
+        
+        /**
+         * 总已注册域名数量
+         */
+        private Integer totalRegisteredDomains;
+        
+        /**
+         * 注册状态（CAN_REGISTER-可以注册，LIMIT_REACHED-已达上限）
+         */
+        private String registrationStatus;
+    }
 }
