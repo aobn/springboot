@@ -311,4 +311,34 @@ public class UserCloudflareZoneServiceImpl implements UserCloudflareZoneService 
             return false;
         }
     }
+    
+    /**
+     * 获取用户所有域名列表
+     */
+    @Override
+    public List<UserCloudflareZone> getUserZonesByUserId(Long userId) {
+        log.info("获取用户 {} 的所有域名列表", userId);
+        
+        try {
+            return userCloudflareZoneMapper.findByUserId(userId);
+        } catch (Exception e) {
+            log.error("获取用户 {} 的所有域名列表异常", userId, e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 根据Zone ID获取用户域名记录
+     */
+    @Override
+    public UserCloudflareZone getUserZoneByZoneId(Long userId, String zoneId) {
+        log.info("获取用户 {} 在域名 {} 的记录", userId, zoneId);
+        
+        try {
+            return userCloudflareZoneMapper.findByUserIdAndZoneId(userId, zoneId);
+        } catch (Exception e) {
+            log.error("获取用户 {} 在域名 {} 的记录异常", userId, zoneId, e);
+            return null;
+        }
+    }
 }

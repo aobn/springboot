@@ -75,4 +75,21 @@ public interface UserCloudflareZoneService {
      * @return 是否已注册
      */
     boolean isUserRegisteredZone(Long userId, String zoneId);
+    
+    /**
+     * 获取用户所有域名列表
+     * 
+     * @param userId 用户ID
+     * @return 用户域名列表
+     */
+    List<UserCloudflareZone> getUserZonesByUserId(Long userId);
+    
+    /**
+     * 根据Zone ID获取用户域名记录
+     * 
+     * @param userId 用户ID
+     * @param zoneId Zone ID
+     * @return 用户域名记录
+     */
+    UserCloudflareZone getUserZoneByZoneId(Long userId, String zoneId);
 }

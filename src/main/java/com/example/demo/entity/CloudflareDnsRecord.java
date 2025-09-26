@@ -161,6 +161,16 @@ public class CloudflareDnsRecord {
     private String remark;
     
     /**
+     * 用户ID（关联user表，标识该记录属于哪个用户）
+     */
+    private Long userId;
+    
+    /**
+     * 用户域名ID（关联user_cloudflare_domain表）
+     */
+    private Long userDomainId;
+    
+    /**
      * 本地创建时间
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

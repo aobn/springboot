@@ -170,8 +170,20 @@ public class CloudflareDnsRecordServiceImpl implements CloudflareDnsRecordServic
                 log.info("更新DNS记录成功: id={}", record.getId());
             } else {
                 // 插入新记录
-                record.setCreateTime(LocalDateTime.now());
-                record.setUpdateTime(LocalDateTime.now());
+                LocalDateTime now = LocalDateTime.now();
+                record.setCreateTime(now);
+                record.setUpdateTime(now);
+                record.setLastSyncTime(now);
+                // 设置默认值
+                if (record.getCreatedOn() == null) {
+                    record.setCreatedOn(now);
+                }
+                if (record.getModifiedOn() == null) {
+                    record.setModifiedOn(now);
+                }
+                if (record.getSyncStatus() == null) {
+                    record.setSyncStatus("SUCCESS");
+                }
                 result = cloudflareRecordMapper.insert(record);
                 log.info("插入新DNS记录成功: id={}", record.getId());
             }

@@ -145,4 +145,34 @@ public class CreateDnsRecordResponse {
          */
         private String message;
     }
+    
+    /**
+     * 获取记录ID
+     * @return 记录ID
+     */
+    public String getRecordId() {
+        return result != null ? result.getId() : null;
+    }
+    
+    /**
+     * 获取是否可代理
+     * @return 是否可代理
+     */
+    public Boolean getProxiable() {
+        return result != null ? result.isProxiable() : null;
+    }
+    
+    /**
+     * 获取错误消息
+     * @return 错误消息
+     */
+    public String getErrorMessage() {
+        if (errors != null && !errors.isEmpty()) {
+            return errors.get(0).getMessage();
+        }
+        if (messages != null && !messages.isEmpty()) {
+            return messages.get(0);
+        }
+        return "未知错误";
+    }
 }
