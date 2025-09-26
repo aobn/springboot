@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.AdminCloudflareZoneMapper">
+
+    <!-- 根据Zone ID查找域名 -->
+    <select id="findByZoneId" resultType="com.example.demo.entity.CloudflareZone">
+        SELECT * FROM cloudflare_zone 
+        WHERE zone_id = #{zoneId} AND is_active = 1
+    </select>
+
+    <!-- 统计域名前缀池数量 -->
+    <select id="countPrefixPool" resultType="int">
+        SELECT COUNT(*) FROM cloudflare_prefix_pool 
+        WHERE zone_id = #{zoneId}
+    </select>
+
+    <!-- 统计已分配前缀数量 -->
+    <select id="countAssignedPrefixes" resultType="int">
+        SELECT COUNT(*) FROM cloudflare_prefix_pool 
+        WHERE zone_id = #{zoneId} AND is_assigned = 1
+    </select>
+
+    <!-- 调用存储过程初始化前缀池 -->
+    <select id="callInitPrefixPool" statementType="CALLABLE">
+        {CALL init_cloudflare_prefix_pool(#{zoneId})}
+    </select>
+
+    <!-- 清空前缀池 -->
+    <delete id="clearPrefixPool">
+        DELETE FROM cloudflare_prefix_pool WHERE zone_id = #{zoneId}
+    </delete>
+
+    <!-- 获取前缀池统计信息 -->
+    <select id="getPrefixPoolStats" resultType="map">
+        SELECT 
+            COUNT(*) as total_prefixes,
+            COUNT(CASE WHEN is_assigned = 1 THEN 1 END) as assigned_prefixes,
+            COUNT(CASE WHEN is_assigned = 0 THEN 1 END) as available_prefixes,
+            CASE 
+                WHEN COUNT(*) > 0 THEN ROUND((COUNT(CASE WHEN is_assigned = 1 THEN 1 END) / COUNT(*)) * 100, 2)
+                ELSE 0 
+            END as usage_percentage
+        FROM cloudflare_prefix_pool 
+        WHERE zone_id = #{zoneId}
+    </select>
+
+    <!-- 获取所有启用自动分配的域名 -->
+    <select id="findAutoAssignEnabledZones" resultType="com.example.demo.entity.CloudflareZone">
+        SELECT * FROM cloudflare_zone 
+        WHERE auto_assign_enabled = 1 AND is_active = 1
+        ORDER BY create_time ASC
+    </select>
+
+    <!-- 获取所有域名的前缀池统计 -->
+    <select id="getAllZonePrefixStats" resultType="map">
+        SELECT 
+            cz.zone_id,
+            cz.name as zone_name,
+            cz.status as zone_status,
+            cz.auto_assign_enabled,
+            cz.user_count,
+            cz.user_limit,
+            cz.dns_record_count,
+            cz.dns_record_limit,
+            cz.is_full,
+            COALESCE(pp.total_prefixes, 0) as total_prefixes,
+            COALESCE(pp.assigned_prefixes, 0) as assigned_prefixes,
+            COALESCE(pp.available_prefixes, 0) as available_prefixes,
+            COALESCE(pp.usage_percentage, 0) as usage_percentage,
+            CASE 
+                WHEN COALESCE(pp.total_prefixes, 0) = 0 THEN 'NO_POOL'
+                WHEN pp.available_prefixes = 0 THEN 'FULL'
+                ELSE 'ACTIVE'
+            END as pool_status
+        FROM cloudflare_zone cz
+        LEFT JOIN (
+            SELECT 
+                zone_id,
+                COUNT(*) as total_prefixes,
+                COUNT(CASE WHEN is_assigned = 1 THEN 1 END) as assigned_prefixes,
+                COUNT(CASE WHEN is_assigned = 0 THEN 1 END) as available_prefixes,
+                CASE 
+                    WHEN COUNT(*) > 0 THEN ROUND((COUNT(CASE WHEN is_assigned = 1 THEN 1 END) / COUNT(*)) * 100, 2)
+                    ELSE 0 
+                END as usage_percentage
+            FROM cloudflare_prefix_pool 
+            GROUP BY zone_id
+        ) pp ON cz.zone_id = pp.zone_id
+        WHERE cz.is_active = 1
+        ORDER BY cz.create_time ASC
+    </select>
+
+    <!-- 获取域名的用户注册信息 -->
+    <select id="getUserRegistrations" resultType="map">
+        SELECT 
+            ucd.id,
+            ucd.user_id,
+            u.username,
+            u.email,
+            ucd.assigned_prefix,
+            ucd.full_subdomain,
+            ucd.status,
+            ucd.dns_record_count,
+            ucd.dns_record_limit,
+            ucd.assigned_time,
+            ucd.create_time
+        FROM user_cloudflare_domain ucd
+        LEFT JOIN user u ON ucd.user_id = u.id
+        WHERE ucd.zone_id = #{zoneId}
+        ORDER BY ucd.assigned_time DESC
+    </select>
+
+</mapper>

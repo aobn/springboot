@@ -252,4 +252,39 @@ public class CloudflareZone {
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    /**
+     * DNS记录总数量
+     */
+    private Integer dnsRecordCount;
+    
+    /**
+     * DNS记录数量限制
+     */
+    private Integer dnsRecordLimit;
+    
+    /**
+     * 已注册用户数量
+     */
+    private Integer userCount;
+    
+    /**
+     * 用户数量限制
+     */
+    private Integer userLimit;
+    
+    /**
+     * 是否已满(false-未满，true-已满)
+     */
+    private Boolean isFull;
+    
+    /**
+     * 是否启用自动分配前缀(false-否，true-是)
+     */
+    private Boolean autoAssignEnabled;
+    
+    /**
+     * 下一个可分配的十六进制前缀
+     */
+    private String nextPrefixHex;
 }

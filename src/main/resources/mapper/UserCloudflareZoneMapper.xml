@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.UserCloudflareZoneMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.demo.entity.UserCloudflareZone">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="zone_id" property="zoneId" jdbcType="VARCHAR"/>
+        <result column="zone_name" property="zoneName" jdbcType="VARCHAR"/>
+        <result column="assigned_prefix" property="assignedPrefix" jdbcType="VARCHAR"/>
+        <result column="full_subdomain" property="fullSubdomain" jdbcType="VARCHAR"/>
+        <result column="dns_record_count" property="dnsRecordCount" jdbcType="INTEGER"/>
+        <result column="dns_record_limit" property="dnsRecordLimit" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="assigned_time" property="assignedTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, user_id, zone_id, zone_name, assigned_prefix, full_subdomain, 
+        dns_record_count, dns_record_limit, status, remark, assigned_time, create_time, update_time
+    </sql>
+
+    <!-- 插入用户域名注册记录 -->
+    <insert id="insertUserZone" parameterType="com.example.demo.entity.UserCloudflareZone" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_cloudflare_domain (
+            user_id, zone_id, zone_name, assigned_prefix, full_subdomain, 
+            dns_record_count, dns_record_limit, status, remark
+        ) VALUES (
+            #{userId}, #{zoneId}, #{zoneName}, #{assignedPrefix}, #{fullSubdomain},
+            #{dnsRecordCount}, #{dnsRecordLimit}, #{status}, #{remark}
+        )
+    </insert>
+
+    <!-- 根据用户ID和Zone ID查询 -->
+    <select id="findByUserIdAndZoneId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_cloudflare_domain
+        WHERE user_id = #{userId} AND zone_id = #{zoneId} AND status = 'ACTIVE'
+    </select>
+
+    <!-- 根据用户ID查询所有域名 -->
+    <select id="findByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_cloudflare_domain
+        WHERE user_id = #{userId} AND status = 'ACTIVE'
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID和用户ID查询 -->
+    <select id="findByIdAndUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_cloudflare_domain
+        WHERE id = #{id} AND user_id = #{userId} AND status = 'ACTIVE'
+    </select>
+
+    <!-- 更新DNS记录数量 -->
+    <update id="updateDnsRecordCount">
+        UPDATE user_cloudflare_domain 
+        SET dns_record_count = #{dnsRecordCount}, update_time = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId} AND zone_id = #{zoneId} AND status = 'ACTIVE'
+    </update>
+
+    <!-- 注销域名（软删除） -->
+    <update id="unregisterZone">
+        UPDATE user_cloudflare_domain 
+        SET status = 'INACTIVE', update_time = CURRENT_TIMESTAMP
+        WHERE id = #{id} AND user_id = #{userId} AND status = 'ACTIVE'
+    </update>
+
+    <!-- 检查用户是否已注册域名 -->
+    <select id="isUserRegisteredZone" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM user_cloudflare_domain
+        WHERE user_id = #{userId} AND zone_id = #{zoneId} AND status = 'ACTIVE'
+    </select>
+
+    <!-- 获取可用域名列表 -->
+    <select id="getAvailableZones" resultType="map">
+        SELECT 
+            zone_id,
+            name,
+            user_count,
+            user_limit,
+            dns_record_count,
+            dns_record_limit,
+            CASE WHEN is_full = 1 OR user_count >= user_limit THEN 0 ELSE 1 END as available
+        FROM cloudflare_zone
+        WHERE is_active = 1 AND auto_assign_enabled = 1
+        ORDER BY user_count ASC, name ASC
+    </select>
+
+    <!-- 调用存储过程注册域名 -->
+    <select id="callRegisterUserCloudflareZone" statementType="CALLABLE">
+        {CALL register_user_cloudflare_domain(
+            #{userId, mode=IN, jdbcType=BIGINT},
+            #{zoneId, mode=IN, jdbcType=VARCHAR},
+            #{resultCode, mode=OUT, jdbcType=INTEGER},
+            #{resultMessage, mode=OUT, jdbcType=VARCHAR},
+            #{assignedPrefix, mode=OUT, jdbcType=VARCHAR},
+            #{fullSubdomain, mode=OUT, jdbcType=VARCHAR}
+        )}
+    </select>
+
+    <!-- 获取域名统计信息 -->
+    <select id="getZoneStats" resultType="map">
+        SELECT 
+            zone_id,
+            zone_name,
+            user_count,
+            user_limit,
+            dns_record_count,
+            dns_record_limit,
+            is_full,
+            available_prefix_count
+        FROM v_cloudflare_zone_stats
+        WHERE zone_id = #{zoneId}
+    </select>
+
+    <!-- 批量查询用户域名信息 -->
+    <select id="findByUserIdList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_cloudflare_domain
+        WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        AND status = 'ACTIVE'
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据Zone ID查询所有用户 -->
+    <select id="findByZoneId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_cloudflare_domain
+        WHERE zone_id = #{zoneId} AND status = 'ACTIVE'
+        ORDER BY create_time ASC
+    </select>
+
+    <!-- 统计用户在指定域名下的DNS记录数量 -->
+    <select id="countUserDnsRecords" resultType="int">
+        SELECT COALESCE(dns_record_count, 0)
+        FROM user_cloudflare_domain
+        WHERE user_id = #{userId} AND zone_id = #{zoneId} AND status = 'ACTIVE'
+    </select>
+
+    <!-- 检查用户是否可以添加DNS记录 -->
+    <select id="canAddDnsRecord" resultType="boolean">
+        SELECT 
+            CASE 
+                WHEN dns_record_count &lt; dns_record_limit THEN 1 
+                ELSE 0 
+            END
+        FROM user_cloudflare_domain
+        WHERE user_id = #{userId} AND zone_id = #{zoneId} AND status = 'ACTIVE'
+    </select>
+
+</mapper>

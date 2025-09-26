@@ -161,4 +161,42 @@ public class JwtUtil {
     public Boolean validateToken(String token) {
         return !isTokenExpired(token);
     }
+    
+    /**
+     * 从HTTP请求中获取JWT令牌
+     * @param request HTTP请求对象
+     * @return JWT令牌字符串，如果不存在则返回null
+     */
+    public String getTokenFromRequest(jakarta.servlet.http.HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+
+    /**
+     * 验证管理员令牌
+     * @param token JWT令牌
+     * @return 是否为有效的管理员令牌
+     */
+    public Boolean validateAdminToken(String token) {
+        try {
+            if (token == null || token.trim().isEmpty()) {
+                return false;
+            }
+            
+            // 检查令牌是否过期
+            if (isTokenExpired(token)) {
+                return false;
+            }
+            
+            // 检查用户角色是否为管理员
+            String role = getRoleFromToken(token);
+            return "ADMIN".equals(role);
+            
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }
