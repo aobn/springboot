@@ -1,14 +1,18 @@
 package com.example.demo.controller;
 
 import com.example.demo.common.ApiResponse;
+import com.example.demo.dto.UserAllDomainsResponse;
 import com.example.demo.dto.UserDomainStats;
+import com.example.demo.entity.UserCloudflareZone;
 import com.example.demo.entity.UserSubdomain;
+import com.example.demo.service.UserCloudflareZoneService;
 import com.example.demo.service.UserSubdomainService;
 import com.example.demo.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,6 +28,9 @@ public class UserSubdomainController {
     
     @Autowired
     private UserSubdomainService userSubdomainService;
+    
+    @Autowired
+    private UserCloudflareZoneService userCloudflareZoneService;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -198,14 +205,130 @@ public class UserSubdomainController {
     }
     
     /**
-     * 获取当前登录用户的3级域名列表
+     * 获取当前登录用户的所有域名列表（包括DNSPod和Cloudflare）
      * 
      * @param authHeader Authorization头信息
      * @param status 可选的状态过滤参数
-     * @return 当前用户的域名列表
+     * @return 当前用户的所有域名列表
      */
     @GetMapping("/list/mine")
-    public ApiResponse<List<UserSubdomain>> getMyDomains(
+    public ApiResponse<UserAllDomainsResponse> getMyAllDomains(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) String status) {
+        try {
+            // 从Authorization头中提取token
+            String token = authHeader.replace("Bearer ", "");
+            
+            // 从token中获取用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            
+            UserAllDomainsResponse response = new UserAllDomainsResponse();
+            
+            // 获取DNSPod域名列表
+            List<UserSubdomain> dnspodDomains;
+            if (status != null && !status.isEmpty()) {
+                dnspodDomains = userSubdomainService.getByUserIdAndStatus(userId, status);
+            } else {
+                dnspodDomains = userSubdomainService.getByUserId(userId);
+            }
+            
+            // 转换DNSPod域名数据
+            List<UserAllDomainsResponse.DnspodDomainInfo> dnspodDomainInfos = new ArrayList<>();
+            for (UserSubdomain domain : dnspodDomains) {
+                UserAllDomainsResponse.DnspodDomainInfo info = new UserAllDomainsResponse.DnspodDomainInfo();
+                info.setId(domain.getId());
+                info.setUserId(domain.getUserId());
+                info.setSubdomain(domain.getSubdomain());
+                info.setDomain(domain.getDomain());
+                info.setFullDomain(domain.getFullDomain());
+                info.setStatus(domain.getStatus());
+                info.setRemark(domain.getRemark());
+                info.setCreateTime(domain.getCreateTime());
+                info.setUpdateTime(domain.getUpdateTime());
+                dnspodDomainInfos.add(info);
+            }
+            response.setDnspodDomains(dnspodDomainInfos);
+            
+            // 获取Cloudflare域名列表
+            List<UserCloudflareZone> cloudflareZones = userCloudflareZoneService.getUserZonesByUserId(userId);
+            
+            // 转换Cloudflare域名数据
+            List<UserAllDomainsResponse.CloudflareDomainInfo> cloudflareDomainInfos = new ArrayList<>();
+            for (UserCloudflareZone zone : cloudflareZones) {
+                // 如果指定了状态过滤，则过滤Cloudflare域名
+                if (status != null && !status.isEmpty() && !status.equals(zone.getStatus())) {
+                    continue;
+                }
+                
+                UserAllDomainsResponse.CloudflareDomainInfo info = new UserAllDomainsResponse.CloudflareDomainInfo();
+                info.setId(zone.getId());
+                info.setUserId(zone.getUserId());
+                info.setZoneId(zone.getZoneId());
+                info.setZoneName(zone.getZoneName());
+                info.setAssignedPrefix(zone.getAssignedPrefix());
+                info.setFullSubdomain(zone.getFullSubdomain());
+                info.setStatus(zone.getStatus());
+                info.setDnsRecordCount(zone.getDnsRecordCount());
+                info.setDnsRecordLimit(zone.getDnsRecordLimit());
+                info.setRemark(zone.getRemark());
+                info.setAssignedTime(zone.getAssignedTime());
+                
+                // 计算DNS使用率
+                if (zone.getDnsRecordLimit() != null && zone.getDnsRecordLimit() > 0) {
+                    double usagePercent = (double) (zone.getDnsRecordCount() != null ? zone.getDnsRecordCount() : 0) 
+                                        / zone.getDnsRecordLimit() * 100;
+                    info.setDnsUsagePercent(Math.round(usagePercent * 100.0) / 100.0);
+                }
+                
+                cloudflareDomainInfos.add(info);
+            }
+            response.setCloudflareDomains(cloudflareDomainInfos);
+            
+            // 设置统计信息
+            UserAllDomainsResponse.DomainStats stats = new UserAllDomainsResponse.DomainStats();
+            stats.setDnspodDomainsCount(dnspodDomainInfos.size());
+            stats.setCloudflareDomainsCount(cloudflareDomainInfos.size());
+            stats.setTotalDomainsCount(dnspodDomainInfos.size() + cloudflareDomainInfos.size());
+            
+            // 获取用户可注册域名数量
+            Integer remainingCount = userSubdomainService.getUserRemainingDomainCount(userId);
+            stats.setAvailableDomains(remainingCount != null ? remainingCount : 0);
+            
+            // 判断注册状态
+            if (stats.getAvailableDomains() > 0) {
+                stats.setRegistrationStatus("CAN_REGISTER");
+            } else {
+                stats.setRegistrationStatus("LIMIT_REACHED");
+            }
+            
+            response.setStats(stats);
+            
+            log.info("用户 {} 查询了所有域名列表，DNSPod: {} 条，Cloudflare: {} 条，总计: {} 条", 
+                userId, stats.getDnspodDomainsCount(), stats.getCloudflareDomainsCount(), stats.getTotalDomainsCount());
+            
+            return ApiResponse.success(response);
+            
+        } catch (Exception e) {
+            // 检查是否是JWT相关异常
+            if (e instanceof io.jsonwebtoken.JwtException) {
+                // JWT相关异常，重新抛出让全局异常处理器处理
+                log.error("JWT解析失败", e);
+                throw e;
+            }
+            log.error("获取用户所有域名列表失败", e);
+            return ApiResponse.error(500, "获取域名列表失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取当前登录用户的DNSPod 3级域名列表（保持向后兼容）
+     * 
+     * @param authHeader Authorization头信息
+     * @param status 可选的状态过滤参数
+     * @return 当前用户的DNSPod域名列表
+     */
+    @GetMapping("/list/mine/dnspod")
+    public ApiResponse<List<UserSubdomain>> getMyDnspodDomains(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String status) {
         try {
@@ -224,7 +347,7 @@ public class UserSubdomainController {
                 result = userSubdomainService.getByUserId(userId);
             }
             
-            log.info("用户 {} 查询了自己的域名列表，共 {} 条记录", userId, result.size());
+            log.info("用户 {} 查询了DNSPod域名列表，共 {} 条记录", userId, result.size());
             return ApiResponse.success(result);
             
         } catch (Exception e) {
@@ -234,7 +357,7 @@ public class UserSubdomainController {
                 log.error("JWT解析失败", e);
                 throw e;
             }
-            log.error("获取用户域名列表失败", e);
+            log.error("获取用户DNSPod域名列表失败", e);
             return ApiResponse.error(500, "获取域名列表失败：" + e.getMessage());
         }
     }
