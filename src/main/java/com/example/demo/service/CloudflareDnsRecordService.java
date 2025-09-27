@@ -109,4 +109,12 @@ public interface CloudflareDnsRecordService {
      * @return 本地DNS记录实体
      */
     CloudflareDnsRecord convertCreateResponseToEntity(CreateDnsRecordResponse createResponse, String zoneId);
+    
+    /**
+     * 更新DNS记录到Cloudflare并同步到本地数据库
+     * @param recordId DNS记录ID
+     * @param updateData 更新数据
+     * @return 更新后的DNS记录实体
+     */
+    CloudflareDnsRecord updateDnsRecord(String recordId, Object updateData);
 }

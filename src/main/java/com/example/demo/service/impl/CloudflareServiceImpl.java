@@ -402,6 +402,73 @@ public class CloudflareServiceImpl implements CloudflareService {
     }
     
     @Override
+    public CreateDnsRecordResponse updateDnsRecord(String zoneId, String recordId, Map<String, Object> updateData) throws Exception {
+        log.info("=== 开始更新Cloudflare DNS记录 ===");
+        log.info("Zone ID: {}, Record ID: {}", zoneId, recordId);
+        log.info("更新数据: {}", updateData);
+        
+        if (zoneId == null || zoneId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Zone ID不能为空");
+        }
+        
+        if (recordId == null || recordId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Record ID不能为空");
+        }
+        
+        if (updateData == null || updateData.isEmpty()) {
+            throw new IllegalArgumentException("更新数据不能为空");
+        }
+        
+        try {
+            // 构建请求URL
+            String url = CLOUDFLARE_API_BASE_URL + "/zones/" + zoneId + "/dns_records/" + recordId;
+            log.info("请求URL: {}", url);
+            
+            // 构建请求体
+            String requestBody = objectMapper.writeValueAsString(updateData);
+            log.info("请求体: {}", requestBody);
+            
+            // 构建HTTP请求
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("X-Auth-Email", apiEmail)
+                    .header("X-Auth-Key", apiKey)
+                    .header("Content-Type", "application/json")
+                    .method("PATCH", HttpRequest.BodyPublishers.ofString(requestBody))
+                    .timeout(Duration.ofSeconds(30))
+                    .build();
+            
+            // 发送请求
+            log.info("发送PATCH请求到Cloudflare API");
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            log.info("响应状态码: {}", response.statusCode());
+            log.debug("响应内容: {}", response.body());
+            
+            // 解析响应
+            CreateDnsRecordResponse updateResponse = objectMapper.readValue(response.body(), CreateDnsRecordResponse.class);
+            
+            if (response.statusCode() == 200 && updateResponse.isSuccess()) {
+                log.info("DNS记录更新成功: recordId={}", recordId);
+                if (updateResponse.getResult() != null) {
+                    CreateDnsRecordResponse.DnsRecordResult result = updateResponse.getResult();
+                    log.info("更新后记录信息: name={}, type={}, content={}", 
+                            result.getName(), result.getType(), result.getContent());
+                }
+            } else {
+                log.error("DNS记录更新失败: statusCode={}, errors={}", 
+                    response.statusCode(), updateResponse.getErrors());
+            }
+            
+            return updateResponse;
+            
+        } catch (IOException | InterruptedException e) {
+            log.error("更新DNS记录时发生异常: zoneId={}, recordId={}", zoneId, recordId, e);
+            throw new Exception("更新DNS记录失败: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
     public boolean testConnection() {
         try {
             log.info("=== 测试Cloudflare API连接 ===");

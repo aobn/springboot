@@ -51,6 +51,17 @@ public interface CloudflareService {
     CreateDnsRecordResponse createDnsRecord(String zoneId, CreateDnsRecordRequest request) throws Exception;
     
     /**
+     * 更新DNS记录
+     * 
+     * @param zoneId Zone ID
+     * @param recordId DNS记录ID
+     * @param updateData 更新数据
+     * @return 更新结果
+     * @throws Exception 调用API异常
+     */
+    CreateDnsRecordResponse updateDnsRecord(String zoneId, String recordId, java.util.Map<String, Object> updateData) throws Exception;
+    
+    /**
      * 测试Cloudflare API连接
      * 
      * @return 是否连接成功

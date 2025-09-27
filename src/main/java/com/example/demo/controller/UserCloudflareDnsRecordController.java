@@ -5,6 +5,7 @@ import com.example.demo.dto.CreateDnsRecordRequest;
 import com.example.demo.dto.CreateDnsRecordResponse;
 import com.example.demo.dto.UserCloudflareDnsRecordRequest;
 import com.example.demo.dto.UserCloudflareDnsRecordResponse;
+import com.example.demo.dto.UserCloudflareDnsRecordUpdateRequest;
 import com.example.demo.entity.CloudflareDnsRecord;
 import com.example.demo.entity.UserCloudflareZone;
 import com.example.demo.service.CloudflareService;
@@ -298,6 +299,79 @@ public class UserCloudflareDnsRecordController {
             
         } catch (Exception e) {
             log.error("获取DNS记录详情异常", e);
+            return ApiResponse.error(500, "系统错误，请稍后重试");
+        }
+    }
+    
+    /**
+     * 更新DNS记录
+     */
+    @PutMapping("/{recordId}")
+    @Transactional
+    public ApiResponse<UserCloudflareDnsRecordResponse> updateDnsRecord(
+            @PathVariable String recordId,
+            @Valid @RequestBody UserCloudflareDnsRecordUpdateRequest request,
+            HttpServletRequest httpRequest) {
+        
+        try {
+            // 从JWT令牌获取用户ID
+            String token = jwtUtil.getTokenFromRequest(httpRequest);
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            String email = jwtUtil.getEmailFromToken(token);
+            
+            log.info("用户 {} ({}) 请求更新DNS记录: recordId={}, request={}", userId, email, recordId, request);
+            
+            // 1. 验证DNS记录是否存在且属于当前用户
+            CloudflareDnsRecord existingRecord = cloudflareDnsRecordService.getLocalDnsRecordByRecordId(recordId);
+            if (existingRecord == null) {
+                return ApiResponse.error(404, "DNS记录不存在");
+            }
+            
+            if (existingRecord.getUserId() == null || !existingRecord.getUserId().equals(userId)) {
+                return ApiResponse.error(403, "无权限修改该DNS记录");
+            }
+            
+            // 2. 验证用户域名状态
+            UserCloudflareZone userZone = userCloudflareZoneService.getUserZoneById(userId, existingRecord.getUserDomainId());
+            if (userZone == null || !"ACTIVE".equals(userZone.getStatus())) {
+                return ApiResponse.error(400, "域名状态异常，无法更新DNS记录");
+            }
+            
+            // 3. 验证记录内容格式
+            String contentValidationError = request.validateContent(existingRecord.getType());
+            if (contentValidationError != null) {
+                log.warn("DNS记录内容格式验证失败: {}", contentValidationError);
+                return ApiResponse.error(400, "参数验证失败：" + contentValidationError);
+            }
+            
+            // 4. 验证特殊记录类型的必需字段
+            if ("SRV".equalsIgnoreCase(existingRecord.getType()) && !request.validateSrvRecord()) {
+                return ApiResponse.error(400, "SRV记录缺少必需字段：priority、weight、port、service、proto、target");
+            }
+            
+            if ("MX".equalsIgnoreCase(existingRecord.getType()) && !request.validateMxRecord()) {
+                return ApiResponse.error(400, "MX记录缺少必需字段：priority");
+            }
+            
+            // 5. 验证代理设置
+            if (request.getProxied() != null && request.getProxied() && !request.isProxySupported(existingRecord.getType())) {
+                return ApiResponse.error(400, existingRecord.getType() + "记录不支持Cloudflare代理功能");
+            }
+            
+            // 6. 调用服务层更新DNS记录
+            CloudflareDnsRecord updatedRecord = cloudflareDnsRecordService.updateDnsRecord(recordId, request);
+            if (updatedRecord == null) {
+                return ApiResponse.error(500, "更新DNS记录失败");
+            }
+            
+            // 7. 转换为响应DTO
+            UserCloudflareDnsRecordResponse response = convertToResponse(updatedRecord, userZone);
+            
+            log.info("用户 {} 更新DNS记录成功: recordId={}", userId, recordId);
+            return ApiResponse.success("DNS记录更新成功", response);
+            
+        } catch (Exception e) {
+            log.error("更新DNS记录异常", e);
             return ApiResponse.error(500, "系统错误，请稍后重试");
         }
     }

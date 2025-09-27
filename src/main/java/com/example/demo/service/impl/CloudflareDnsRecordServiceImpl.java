@@ -492,4 +492,103 @@ public class CloudflareDnsRecordServiceImpl implements CloudflareDnsRecordServic
             }
         }
     }
+    
+    @Override
+    @Transactional
+    public CloudflareDnsRecord updateDnsRecord(String recordId, Object updateData) {
+        try {
+            log.info("=== 开始更新DNS记录 ===");
+            log.info("记录ID: {}", recordId);
+            
+            // 1. 获取现有记录
+            CloudflareDnsRecord existingRecord = getLocalDnsRecordByRecordId(recordId);
+            if (existingRecord == null) {
+                log.error("DNS记录不存在: recordId={}", recordId);
+                return null;
+            }
+            
+            // 2. 构建更新请求数据
+            com.example.demo.dto.UserCloudflareDnsRecordUpdateRequest request = 
+                (com.example.demo.dto.UserCloudflareDnsRecordUpdateRequest) updateData;
+            
+            // 3. 构建Cloudflare API更新请求
+            java.util.Map<String, Object> updateRequest = new java.util.HashMap<>();
+            updateRequest.put("name", existingRecord.getName());
+            updateRequest.put("type", existingRecord.getType());
+            updateRequest.put("content", request.getContent());
+            updateRequest.put("ttl", request.getTtl());
+            
+            // 设置代理状态（仅A、AAAA、CNAME记录支持）
+            if (request.isProxySupported(existingRecord.getType()) && request.getProxied() != null) {
+                updateRequest.put("proxied", request.getProxied());
+            }
+            
+            // 设置优先级（MX和SRV记录）
+            if (request.getPriority() != null) {
+                updateRequest.put("priority", request.getPriority());
+            }
+            
+            // 设置SRV记录特有字段
+            if ("SRV".equalsIgnoreCase(existingRecord.getType())) {
+                if (request.getWeight() != null) updateRequest.put("weight", request.getWeight());
+                if (request.getPort() != null) updateRequest.put("port", request.getPort());
+                if (request.getService() != null) updateRequest.put("service", request.getService());
+                if (request.getProto() != null) updateRequest.put("proto", request.getProto());
+                if (request.getTarget() != null) updateRequest.put("target", request.getTarget());
+            }
+            
+            // 设置注释
+            if (request.getComment() != null) {
+                updateRequest.put("comment", request.getComment());
+            }
+            
+            log.info("更新请求数据: {}", updateRequest);
+            
+            // 4. 调用Cloudflare API更新记录
+            CreateDnsRecordResponse updateResponse = cloudflareService.updateDnsRecord(
+                existingRecord.getZoneId(), recordId, updateRequest);
+            
+            if (updateResponse == null || !updateResponse.isSuccess()) {
+                log.error("Cloudflare API更新失败: {}", updateResponse);
+                return null;
+            }
+            
+            // 5. 更新本地数据库记录
+            CloudflareDnsRecord updatedRecord = convertCreateResponseToEntity(updateResponse, existingRecord.getZoneId());
+            updatedRecord.setId(existingRecord.getId()); // 保持本地ID不变
+            updatedRecord.setUserId(existingRecord.getUserId());
+            updatedRecord.setUserDomainId(existingRecord.getUserDomainId());
+            updatedRecord.setSyncStatus("SUCCESS");
+            updatedRecord.setSyncError(null);
+            updatedRecord.setLastSyncTime(LocalDateTime.now());
+            updatedRecord.setCreateTime(existingRecord.getCreateTime()); // 保持创建时间不变
+            
+            boolean saved = saveOrUpdateDnsRecord(updatedRecord);
+            if (!saved) {
+                log.error("保存更新后的DNS记录失败");
+                return null;
+            }
+            
+            log.info("DNS记录更新成功: recordId={}", recordId);
+            return updatedRecord;
+            
+        } catch (Exception e) {
+            log.error("更新DNS记录异常: recordId={}", recordId, e);
+            
+            // 更新同步状态为失败
+            try {
+                CloudflareDnsRecord failedRecord = getLocalDnsRecordByRecordId(recordId);
+                if (failedRecord != null) {
+                    failedRecord.setSyncStatus("FAILED");
+                    failedRecord.setSyncError("更新失败: " + e.getMessage());
+                    failedRecord.setLastSyncTime(LocalDateTime.now());
+                    saveOrUpdateDnsRecord(failedRecord);
+                }
+            } catch (Exception ex) {
+                log.error("更新同步状态失败", ex);
+            }
+            
+            return null;
+        }
+    }
 }
