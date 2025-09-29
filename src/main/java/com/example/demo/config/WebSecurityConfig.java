@@ -53,7 +53,7 @@ public class WebSecurityConfig {
                 // DNSPod相关接口暂时允许访问，无需认证（便于测试）
                 .requestMatchers("/api/dnspod/**","/api/cloudflare/**").permitAll()
                 // 域名注册查询接口，无需认证
-                .requestMatchers("/api/user/subdomains/check-registration").permitAll()
+                .requestMatchers("/api/user/subdomains/check-registration","api/user/cloudflare/zones/all").permitAll()
                 // 用户相关接口，需要认证（USER或ADMIN角色）
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
                 // 其他接口需要认证

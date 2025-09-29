@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.dto.UserCloudflareZoneRegisterRequest;
 import com.example.demo.dto.UserCloudflareZoneRegisterResponse;
 import com.example.demo.dto.UserCloudflareZoneListResponse;
+import com.example.demo.dto.SimpleCloudflareZoneResponse;
 import com.example.demo.entity.UserCloudflareZone;
 
 import java.util.List;
@@ -100,4 +101,12 @@ public interface UserCloudflareZoneService {
      * @return 用户域名统计信息
      */
     UserCloudflareZoneListResponse.UserDomainStats getUserDomainStats(Long userId);
+    
+    /**
+     * 获取所有Cloudflare域名信息
+     * 从数据库获取所有可用的Cloudflare域名列表
+     * 
+     * @return 所有域名信息列表
+     */
+    List<SimpleCloudflareZoneResponse> getAllCloudflareZones();
 }

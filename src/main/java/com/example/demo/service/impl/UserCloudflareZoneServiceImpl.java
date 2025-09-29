@@ -3,6 +3,7 @@ package com.example.demo.service.impl;
 import com.example.demo.dto.UserCloudflareZoneRegisterRequest;
 import com.example.demo.dto.UserCloudflareZoneRegisterResponse;
 import com.example.demo.dto.UserCloudflareZoneListResponse;
+import com.example.demo.dto.SimpleCloudflareZoneResponse;
 import com.example.demo.entity.CloudflareZone;
 import com.example.demo.entity.UserCloudflareZone;
 import com.example.demo.mapper.CloudflareZoneMapper;
@@ -410,5 +411,70 @@ public class UserCloudflareZoneServiceImpl implements UserCloudflareZoneService 
         }
         
         return stats;
+    }
+    
+    /**
+     * 获取所有Cloudflare域名信息
+     * 从数据库获取所有可用的Cloudflare域名列表
+     */
+    @Override
+    public List<SimpleCloudflareZoneResponse> getAllCloudflareZones() {
+        try {
+            log.info("开始获取所有Cloudflare域名信息");
+            
+            // 从数据库获取所有活跃的域名
+            List<CloudflareZone> zones = cloudflareZoneMapper.findAllActive();
+            
+            if (zones == null || zones.isEmpty()) {
+                log.warn("数据库中没有找到任何活跃的Cloudflare域名");
+                return new ArrayList<>();
+            }
+            
+            // 转换为SimpleCloudflareZoneResponse
+            List<SimpleCloudflareZoneResponse> result = new ArrayList<>();
+            for (CloudflareZone zone : zones) {
+                SimpleCloudflareZoneResponse response = convertToSimpleResponse(zone);
+                result.add(response);
+            }
+            
+            log.info("成功获取 {} 个Cloudflare域名信息", result.size());
+            return result;
+            
+        } catch (Exception e) {
+            log.error("获取所有Cloudflare域名信息失败", e);
+            throw new RuntimeException("获取域名信息失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 将CloudflareZone实体转换为SimpleCloudflareZoneResponse
+     * 
+     * @param zone 域名实体
+     * @return 简化的响应DTO
+     */
+    private SimpleCloudflareZoneResponse convertToSimpleResponse(CloudflareZone zone) {
+        SimpleCloudflareZoneResponse response = new SimpleCloudflareZoneResponse();
+        
+        response.setZoneId(zone.getZoneId());
+        response.setName(zone.getName());
+        response.setStatus(zone.getStatus());
+        response.setPaused(zone.getPaused());
+        response.setType(zone.getType());
+        response.setNameServers(zone.getNameServers());
+        response.setCreatedOn(zone.getCreatedOn());
+        response.setModifiedOn(zone.getModifiedOn());
+        response.setDnsRecordCount(zone.getDnsRecordCount());
+        response.setDnsRecordLimit(zone.getDnsRecordLimit());
+        response.setUserCount(zone.getUserCount());
+        response.setUserLimit(zone.getUserLimit());
+        response.setIsFull(zone.getIsFull());
+        response.setAutoAssignEnabled(zone.getAutoAssignEnabled());
+        response.setNextPrefixHex(zone.getNextPrefixHex());
+        response.setIsActive(zone.getIsActive());
+        response.setRemark(zone.getRemark());
+        response.setCreateTime(zone.getCreateTime());
+        response.setUpdateTime(zone.getUpdateTime());
+        
+        return response;
     }
 }

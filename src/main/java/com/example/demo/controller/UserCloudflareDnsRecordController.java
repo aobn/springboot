@@ -11,7 +11,6 @@ import com.example.demo.entity.UserCloudflareZone;
 import com.example.demo.service.CloudflareService;
 import com.example.demo.service.CloudflareDnsRecordService;
 import com.example.demo.service.UserCloudflareZoneService;
-import com.example.demo.util.DnsRecordValidator;
 import com.example.demo.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

@@ -4,6 +4,7 @@ import com.example.demo.common.ApiResponse;
 import com.example.demo.dto.UserCloudflareZoneRegisterRequest;
 import com.example.demo.dto.UserCloudflareZoneRegisterResponse;
 import com.example.demo.dto.UserCloudflareZoneListResponse;
+import com.example.demo.dto.SimpleCloudflareZoneResponse;
 import com.example.demo.entity.UserCloudflareZone;
 import com.example.demo.service.UserCloudflareZoneService;
 import com.example.demo.util.JwtUtil;
@@ -245,6 +246,27 @@ public class UserCloudflareZoneController {
             
         } catch (Exception e) {
             log.error("获取用户域名统计信息异常", e);
+            return ApiResponse.error(500, "系统错误，请稍后重试");
+        }
+    }
+    
+    /**
+     * 获取所有Cloudflare域名信息
+     * 从数据库获取所有可用的Cloudflare域名列表（无需认证）
+     */
+    @GetMapping("/all")
+    public ApiResponse<List<SimpleCloudflareZoneResponse>> getAllCloudflareZones() {
+        
+        try {
+            log.info("请求获取所有Cloudflare域名信息");
+            
+            List<SimpleCloudflareZoneResponse> zones = 
+                userCloudflareZoneService.getAllCloudflareZones();
+            
+            return ApiResponse.success("获取所有域名信息成功", zones);
+            
+        } catch (Exception e) {
+            log.error("获取所有Cloudflare域名信息异常", e);
             return ApiResponse.error(500, "系统错误，请稍后重试");
         }
     }
