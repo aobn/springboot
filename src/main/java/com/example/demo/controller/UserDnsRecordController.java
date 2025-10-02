@@ -21,8 +21,12 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
+import jakarta.validation.Validation;
+import jakarta.validation.ConstraintViolation;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 用户DNS解析记录控制器
@@ -59,9 +63,55 @@ public class UserDnsRecordController {
     @PostMapping
     @Transactional
     public ApiResponse<UserDnsRecord> addDnsRecord(
-            @Valid @RequestBody UserDnsRecordRequest request,
+            @RequestBody UserDnsRecordRequest request,
             @RequestHeader("Authorization") String authHeader) {
         try {
+            // 手动校验参数，对SRV记录跳过前缀校验
+            if (!"SRV".equals(request.getType())) {
+                // 对非SRV记录进行完整的参数校验
+                Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+                Set<ConstraintViolation<UserDnsRecordRequest>> violations = validator.validate(request);
+                if (!violations.isEmpty()) {
+                    StringBuilder errorMsg = new StringBuilder();
+                    for (ConstraintViolation<UserDnsRecordRequest> violation : violations) {
+                        errorMsg.append(violation.getMessage()).append("; ");
+                    }
+                    return ApiResponse.error(400, "参数验证失败：" + errorMsg.toString());
+                }
+            } else {
+                // 对SRV记录进行部分校验（跳过name字段的Pattern校验）
+                if (request.getSubdomainId() == null) {
+                    return ApiResponse.error(400, "参数验证失败：子域名ID不能为空");
+                }
+                if (request.getName() == null || request.getName().trim().isEmpty()) {
+                    return ApiResponse.error(400, "参数验证失败：主机记录不能为空");
+                }
+                if (request.getName().length() > 100) {
+                    return ApiResponse.error(400, "参数验证失败：主机记录长度不能超过100个字符");
+                }
+                if (request.getType() == null || request.getType().trim().isEmpty()) {
+                    return ApiResponse.error(400, "参数验证失败：记录类型不能为空");
+                }
+                if (!request.getType().matches("^(A|AAAA|CNAME|MX|TXT|NS|SRV|PTR)$")) {
+                    return ApiResponse.error(400, "参数验证失败：记录类型只能是：A、AAAA、CNAME、MX、TXT、NS、SRV、PTR");
+                }
+                if (request.getValue() == null || request.getValue().trim().isEmpty()) {
+                    return ApiResponse.error(400, "参数验证失败：记录值不能为空");
+                }
+                if (request.getValue().length() > 500) {
+                    return ApiResponse.error(400, "参数验证失败：记录值长度不能超过500个字符");
+                }
+                if (request.getTtl() != null && (request.getTtl() < 1 || request.getTtl() > 604800)) {
+                    return ApiResponse.error(400, "参数验证失败：TTL值范围为1-604800");
+                }
+                if (request.getMx() != null && (request.getMx() < 1 || request.getMx() > 20)) {
+                    return ApiResponse.error(400, "参数验证失败：MX优先级范围为1-20");
+                }
+                if (request.getWeight() != null && (request.getWeight() < 0 || request.getWeight() > 100)) {
+                    return ApiResponse.error(400, "参数验证失败：权重范围为0-100");
+                }
+            }
+            
             // 从Authorization头中提取token
             String token = authHeader.replace("Bearer ", "");
             
