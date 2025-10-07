@@ -27,6 +27,20 @@ import jakarta.validation.ConstraintViolation;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
+
+
+
+/**
+ * 用户DNS解析记录控制器
+ * 提供用户DNS解析记录的管理功能
+ * 
+ * @author CodeBuddy
+ * @since 2025-08-25
+ */
+
+
+
 
 /**
  * 用户DNS解析记录控制器
@@ -66,9 +80,9 @@ public class UserDnsRecordController {
             @RequestBody UserDnsRecordRequest request,
             @RequestHeader("Authorization") String authHeader) {
         try {
-            // 手动校验参数，对SRV记录跳过前缀校验
-            if (!"SRV".equals(request.getType())) {
-                // 对非SRV记录进行完整的参数校验
+            // 手动校验参数，对TXT/SRV记录跳过前缀校验
+            if (!"SRV".equals(request.getType()) && !"TXT".equals(request.getType())) {
+                // 对非TXT/SRV记录进行完整的参数校验
                 Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
                 Set<ConstraintViolation<UserDnsRecordRequest>> violations = validator.validate(request);
                 if (!violations.isEmpty()) {
@@ -79,7 +93,7 @@ public class UserDnsRecordController {
                     return ApiResponse.error(400, "参数验证失败：" + errorMsg.toString());
                 }
             } else {
-                // 对SRV记录进行部分校验（跳过name字段的Pattern校验）
+                // 对TXT/SRV记录进行部分校验（跳过name字段的Pattern校验）
                 if (request.getSubdomainId() == null) {
                     return ApiResponse.error(400, "参数验证失败：子域名ID不能为空");
                 }
@@ -133,6 +147,15 @@ public class UserDnsRecordController {
             
             if (!"ACTIVE".equals(userSubdomain.getStatus())) {
                 return ApiResponse.error(400, "子域名状态异常，无法添加解析记录");
+            }
+
+            // 非TXT/SRV类型进行主机记录（前缀）格式校验；TXT/SRV不校验前缀
+            if (!"TXT".equalsIgnoreCase(request.getType()) && !"SRV".equalsIgnoreCase(request.getType())) {
+                String name = request.getName();
+                String nameRegex = "^(@|_[a-zA-Z0-9][a-zA-Z0-9\\-]{0,62}(\\._[a-zA-Z0-9][a-zA-Z0-9\\-]{0,62})?|[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)$";
+                if (name == null || !Pattern.matches(nameRegex, name)) {
+                    return ApiResponse.error(400, "主机记录格式不正确，支持@表示主域名、下划线开头的特殊记录（如_acme-challenge、_sip._tcp）、或字母数字连字符组合");
+                }
             }
             
             // 2. 检查记录是否已存在（NS记录允许多条同名记录）

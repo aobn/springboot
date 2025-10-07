@@ -133,18 +133,15 @@ public class CloudflareZoneServiceImpl implements CloudflareZoneService {
             
             int result;
             if (existingZone != null) {
-                // 更新现有记录
-                zone.setId(existingZone.getId());
-                zone.setCreateTime(existingZone.getCreateTime());
-                zone.setUpdateTime(LocalDateTime.now());
-                result = cloudflareZoneMapper.updateByZoneId(zone);
-                log.info("更新域名信息成功: id={}", zone.getId());
+                // 已存在记录，按需求不覆盖原记录，直接跳过更新
+                log.info("检测到已存在的域名记录，跳过更新以保留原数据: zoneId={}, id={}", existingZone.getZoneId(), existingZone.getId());
+                result = 1; // 视为成功以便批处理统计
             } else {
                 // 插入新记录
                 zone.setCreateTime(LocalDateTime.now());
                 zone.setUpdateTime(LocalDateTime.now());
                 result = cloudflareZoneMapper.insert(zone);
-                log.info("插入新域名信息成功: id={}", zone.getId());
+                log.info("插入新域名信息成功: zoneId={}, name={}", zone.getZoneId(), zone.getName());
             }
             
             return result > 0;
